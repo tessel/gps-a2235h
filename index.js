@@ -2,10 +2,15 @@
 //chip: 
 //NMEA-0183 GPS Protocol parser at https://github.com/jamesp/node-nmea/
 
-var nmea = require('nmea');
-var tessel = require('tessel');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
+
+var nmea = require('nmea');
+// var tessel = require('tessel');
+// var util = require('util');
+// var EventEmitter = require('events').EventEmitter;
+
+console.log('things required')
 
 var power = 'off';
 
