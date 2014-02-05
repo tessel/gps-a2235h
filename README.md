@@ -1,34 +1,8 @@
-# gps driver
+#GPS
+Driver for the gps-a2235h Tessel GPS module (\<key chip\>)."
 
-Install:
-
-```
-npm install NEED TO MAKE A NODE PACKAGE
-```
-
-Import:
-
-```
-var gps = require('PACKAGE NAME').connect(hardware);
-```
-
-Functions:
-
-*  **`gps`.getCoordinates(`format`)**
-
-*  **`gps`.getAltitude(`format`)**
-
-*  **`gps`.getSatellites()**
-
-*  **`gps`.geofence(`minCoordinates`, `maxCoordinates`)**
-
-*  **`gps`.powerOn()**
-
-*  **`gps`.powerOff()**
-
-Example:
-
-```
+##Example
+```js
 var tessel = require('tessel');
 var hardware = tessel.port('b');
 
@@ -44,6 +18,30 @@ gps.on('connected', function() {
 	});
 });
 ```
+
+##Installation
+```sh
+npm install gps-a2235h
+```
+
+##Import
+```js
+var gps = require('gps-a2235h').connect(hardware);
+```
+
+##Methods
+
+*  **`gps`.getCoordinates(`format`)**
+
+*  **`gps`.getAltitude(`format`)**
+
+*  **`gps`.getSatellites()**
+
+*  **`gps`.geofence(`minCoordinates`, `maxCoordinates`)**
+
+*  **`gps`.powerOn()**
+
+*  **`gps`.powerOff()**
 
 ## License
 
