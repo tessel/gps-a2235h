@@ -1,7 +1,5 @@
 var tessel = require('tessel');
-console.log('requiring gps')
-var gps = require('../').connect(tessel.port("C"));
-console.log('gps required')
+var gps = require('../').connect(tessel.port("A"));
 
 gps.on('connected', function() {
 	console.log('GPS connected. Waiting for data...');

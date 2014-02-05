@@ -1,16 +1,6 @@
-//pins: MISO to G2 (GPIO), MOSI to G1 (GPIO), G2 to G3, G3 to 3.3V
-//chip: 
-//NMEA-0183 GPS Protocol parser at https://github.com/jamesp/node-nmea/
-
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
-
 var nmea = require('nmea');
-// var tessel = require('tessel');
-// var util = require('util');
-// var EventEmitter = require('events').EventEmitter;
-
-console.log('things required')
 
 var power = 'off';
 
