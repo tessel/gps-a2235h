@@ -1,5 +1,5 @@
 #GPS
-Driver for the gps-a2235h Tessel GPS module (\<key chip\>)."
+Driver for the gps-a2235h Tessel GPS module ([A2235-H](http://www.mouser.com/catalog/specsheets/EVA2235-H.pdf))."
 
 ##Example
 ```js
