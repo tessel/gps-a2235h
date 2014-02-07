@@ -149,8 +149,8 @@ GPS.prototype.getSatellites = function () {
 }
 
 GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
-	//takes in coordinates, draws a square with width 2x'range'
-	// returns boolean 'inRange' which is true when coordinates within square
+	// takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
+	// returns boolean 'inRange' which is true when coordinates are in the rectangle
 	var buffer = this.buffer;
 	var inRange = false;
 	if ((minCoordinates.lat.length === 2) && (maxCoordinates.lat.length === 2)) {
