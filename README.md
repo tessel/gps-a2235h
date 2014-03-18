@@ -11,32 +11,94 @@ npm install gps-a2235h
 var tessel = require('tessel');
 var hardware = tessel.port('b');
 
-var gps = require('gps-a2235h').connect(hardware);
+var gps = require('gps-a2235h').use(hardware);
 
-gps.on('connected', function() {
-	console.log('GPS connected. Waiting for data...');
-	gps.on('data', function() {
-		console.log(gps.getSatellites()); //if numSat is 0, try going outside
-		console.log(gps.getCoordinates()); //options: 'deg-min-sec', 'deg-dec', default 'deg-min-dec'
-		console.log(gps.getAltitude()); //options: 'feet', defaults to meters
-		console.log (gps.geofence({lat: [42.29, 'N'], lon: [71.27, 'W']}, {lat: [42.30, 'N'], lon: [71.26, 'W']}));
+gps.on('ready', function() {
+	
+	gps.getCoordinates(function(err, coordinates) {
+		if (err) {
+			console.log("Error retrieving coordinates", coordinates);
+		}
 	});
+	
+	gps.getAltitude(function(err, altitude) {
+		if (err) {
+			console.log("Error retrieving altitude", altitude);
+		}	
+	});
+	
+	gps.setGeofence({lat: [42.29, 'N'], lon: [71.27, 'W']}, {lat: [42.30, 'N'], lon: [71.26, 'W']}, function(err) {
+		if (err) {
+			console.log("Error setting geofence", geofence);
+		}
+	});
+});
+
+gps.on('coordinates', function(coordinates) {
+	console.log("Module is located at", coordinates);
+});
+
+gps.on('altitude', function(altitude) {
+	console.log("Module is at altitude of", altitude);
+});
+
+gps.on('geofence', function(coordinates) {
+	console.log("Module has entered geofence at", coordinates);
+});
+
+gps.on('error', function(err) {
+	console.log("Unable to communicate with module...", err);
 });
 ```
 
 ##Methods
 
-*  **`gps`.getCoordinates(`format`)**
+Get the current coordinates of the GPS module.
+*  **`gps`.getCoordinates(`format`, `function(err, coordinates) {...}` )**
 
-*  **`gps`.getAltitude(`format`)**
+Get the current altitude of the GPS module.
+*  **`gps`.getAltitude(`format`, `function(err, altitude) {...}` )**
 
-*  **`gps`.getSatellites()**
+Get the current reachable satellites. Listen for 'satellite' event to receive satellite data.
+(`allowDuplicates` is an optional boolean to allow multiple events for the same satellite).
+*  **`gps`.getNumSatellites(`[allowDuplicates,]` `function(err) {...}` )**
 
-*  **`gps`.geofence(`minCoordinates`, `maxCoordinates`)**
+Get notified when the GPS is inside of specified geofence.
 
-*  **`gps`.powerOn()**
+Example geofence: `{lat: [42.29, 'N'], lon: [71.27, 'W']}, {lat: [42.30, 'N'], lon: [71.26, 'W']}`
+*  **`gps`.setGeofence(`minCoordinates`, `maxCoordinates`, `function(err) {...}` )**
 
-*  **`gps`.powerOff()**
+Turn the GPS on.
+*  **`gps`.powerOn(`function(err) {...}` )**
+
+Turn the GPS off.
+*  **`gps`.powerOff(`function(err) {...}`)**
+
+##Events
+
+`ready` called when module has can communicate with Tessel.
+* **`gps`.on(`ready`, `function(coordinates) {...}` )**
+
+`error` called when there is a problem communicating with module.
+* **`gps`.on(`error`, `function(coordinates) {...}` )**
+
+`coordinates` called when we have finished calculating our position via satellites.
+* **`gps`.on(`coordinates`, `function(coordinates) {...}` )**
+
+`altitude` called when we have finished calculating our altitude via satellies.
+* **`gps`.on(`altitude`, `function(altitude) {...}` )**
+ 
+`numSatellites` called when we've discovered all available satellites. If this number is zero, you won't be able to get GPS data.
+* **`gps`.on(`numSatellites`, `function(satellite) {...}` )**
+
+`geofence` called when the module has entered a geofence.
+* **`gps`.on(`geofence`, `function(coordinates) {...}` )**
+
+`powerOn` called when the module turns on.
+* **`gps`.on(`powerOn`, `function() {...}` )**
+
+`powerOff` called when the module turns off.
+* **`gps`.on(`powerOff`, `function() {...}` )**
 
 ## License
 
