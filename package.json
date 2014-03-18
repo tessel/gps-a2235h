@@ -13,6 +13,6 @@
   "author": "Kelsey Breseman <kelsey@technical.io>",
   "license": "MIT",
   "dependencies": {
-    "nmea": "0.0.6git"
+    "nmea": "0.0.6"
   }
 }
