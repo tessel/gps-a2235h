@@ -3,13 +3,62 @@ var hardware = tessel.port('a');
 
 var gps = require('../').connect(hardware);
 
+var async = require('async');
+
 gps.on('ready', function() {
   console.log("Module connected. Commencing tests...");
+  beginTests();
 });
 
 gps.on('error', function(err) {
   console.log("Error Connecting:", err);
 });
+
+function beginTests() {
+  async.waterfall(
+    [
+      getCoordinatesTest
+    ],
+    function(err, results) {
+      if (err) {
+        failModule();
+      }
+      else{
+        passModule();
+      }
+    })
+}
+
+function getNumSatellitesTest() {
+  gps.getNumSatellites(function(err, num, timestamp) {
+    console.log("Got these many in the callback", num, timestamp);
+  });
+
+  gps.on('numSatellites', function(num, timestamp) {
+    console.log("Got this many in event", num, timestamp);
+  })
+}
+function getCoordinatesTest() {
+  gps.getCoordinates(function(err, coords) {
+    if (err) {
+      callback && callback(err);
+    }
+    else {
+      console.log("Got these sweet coordinates", coords);
+      callback && callback();
+    }
+  })
+}
+
+function passModule() {
+  console.log("YOU FUCKING PASSED!");
+  tessel.led(2).high();
+}
+
+function failModule(err) {
+  console.log("Failed! Try again.", err);
+  tessel.led(1).high();
+}
 
 // gps.on('connected', function() {
 // 	console.log('GPS connected. Waiting for data...');

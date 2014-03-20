@@ -12,6 +12,7 @@ var GPS = function (hardware, callback) {
 	this.onOff = this.hardware.gpio(3);
 	this.powerState = 'off';
   this.cached = {};
+  this.timeoutDuration = 10*1000;
 
 	// Turn the module on
 	this.initialPowerSequence(function(err) {
@@ -21,10 +22,10 @@ var GPS = function (hardware, callback) {
       console.log("Finished power sequence.");
       this.beginDecoding(function() {
         console.log("Done decoding...");
-        // setImmediate(function() {
-        //   console.log("Done Emitting...");
-        //   this.emit('ready');
-        // }.bind(this))
+        setImmediate(function() {
+          console.log("Done Emitting...");
+          this.emit('ready');
+        }.bind(this))
       }.bind(this));
     }
     else {
@@ -54,7 +55,7 @@ GPS.prototype.initialPowerSequence = function(callback) {
 
     clearTimeout(noReceiveTimeout);
 
-    // And not that we are on
+    // And note that we are on
     self.powerState = 'on';
 
     self.uartExchange(callback);
@@ -98,13 +99,14 @@ GPS.prototype.powerOn = function (callback) {
   if (this.powerState === 'off') {
     console.log("High");
     self.onOff.output().high();
-
     setTimeout(function backLow() {
-      // Pull power low
       console.log("Low")
       self.onOff.low();
-      // Set a timeout for it to have time to turn on and start sending
-      setTimeout(callback, 100);
+      // Pull power low
+      if (this.powerState === 'off') {
+        // Set a timeout for it to have time to turn on and start sending
+        setTimeout(callback, 100);
+      }
     }, 250);
 
   }
@@ -130,16 +132,19 @@ GPS.prototype.powerOff = function (callback) {
 // Eventually replace this with stream packetizing... sorry Kolker
 GPS.prototype.beginDecoding = function(callback) {
 
-  // var packetizer = new Packetizer(this.uart);
-  // packetizer.packetize();
-  // packetizer.on('packet', function(packet) {
-  //   var datum = nmea.parse(packet);
-  //   if (datum) {
-  //     var type = datum.type.toString();
-  //     //update each type in buffer to latest data
-  //     this.cached[type] = datum;
-  //   }
-  // });
+  var packetizer = new Packetizer(this.uart);
+  packetizer.packetize();
+  packetizer.on('packet', function(packet) {
+    var datum = nmea.parse(packet);
+    if (datum) {
+      var type = datum.type.toString();
+      //update each type in buffer to latest data
+      this.cached[type] = datum;
+      this.emitNumSatellites(datum);
+      this.emitCoordinates(datum);
+      this.emitAltitude(datum);
+    }
+  });
   callback && callback();
 }
 
@@ -155,53 +160,95 @@ GPS.prototype.uartExchange = function (callback) {
   return callback && callback();
 }
 
-GPS.prototype.getCoordinates = function (format) {
-    //returns the latest received coordinates of the device and a timestamp
-    //format can be "deg-min-sec" (degree, minute, second),
-    //                                "deg-min-dec" (degree, minutes in decimal) [default]
-    //                                "deg-dec" (degree decimal),
-    //                                "utm" (universal transverse mercator) NOT CURRENTLY SUPPORTED
-    var buffer = this.cached;
-    if ('fix' in buffer) {
-    	var data = buffer['fix'];
-        var latPole = data['latPole'];
-        var lonPole = data['lonPole'];
-        var lat = data['lat'];
-        var lon = data['lon'];
-        var dec = lat.indexOf('.');
-        latDeg = parseFloat(lat.slice(0,dec-2));
-        latMin = parseFloat(lat.slice(dec-2, lat.length));
-        var dec = lon.indexOf('.');
-        lonDeg = parseFloat(lon.slice(0,dec-2));
-        lonMin = parseFloat(lon.slice(dec-2, lon.length));
+GPS.prototype.emitNumSatellites = function(datum) {
+  var fix = datum['fix'];
 
-        if (format === 'utm') {
-            //if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
-            latitude = 'UTM not currently supported.'
-            longitude = 'Voice your outrage to @selkeymoonbeam.'
-        } else if (format === 'deg-min-sec') {
-            latSec = parseFloat(latMin.toString().split('.')[1] * .6);
-            latMin = parseInt(latMin.toString().split('.')[0]);
+  if (fix) {
+    this.emit('numSatellites', data.numSat, parseFloat(data.timestamp));
+  }
+}
 
-            lonSec = parseFloat(lonMin.toString().split('.')[1] * .6);
-            lonMin = parseInt(lonMin.toString().split('.')[0]);
+GPS.prototype.emitCoordinates = function(datum) {
 
-            latitude = [latDeg, latMin, latSec, latPole];
-            longitude = [lonDeg, lonMin, lonSec, lonPole];
-        } else if (format === 'deg-dec') {
-            lat = latDeg + (latMin / 60);
-            lon = lonDeg + (lonMin / 60);
+}
 
-            latitude = [lat, latPole];
-            longitude = [lon, lonPole];
-        } else {
-            latitude = [latDeg, latMin, latPole];
-            longitude = [lonDeg, lonMin, lonPole];
-        }
-        coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(data.timestamp)}
-    	return coordinates
-    } else {
-    	return 'no navigation data in buffer'}
+GPS.prototype.emitAltitude = function(datum) {
+
+}
+
+GPS.prototype.getNumSatellites = function(callback) {
+  var failTimeout
+      , successHandler
+      , failHandler;
+
+  successHandler = function gotSatellites(num, timestamp) {
+    clearTimeout(failTimeout);
+    callback && callback(num, timestamp);
+  }
+
+  failHandler = function() {
+    this.removeListener('numSattelites', listener);
+    callback && callback(new Error("Timeout Error."));
+  }
+
+  this.once('numSattelites', successHandler);
+
+  setTimeout(failHandler, this.timeoutDuration);
+}
+
+GPS.prototype.getCoordinates = function (format, callback) {
+  // If no format was passed in, or nothing was passed in
+  if (typeof format == 'function' || (!format && !callback)) {
+    callback = format;
+    format = {};
+  }
+  //returns the latest received coordinates of the device and a timestamp
+  //format can be "deg-min-sec" (degree, minute, second),
+  //                                "deg-min-dec" (degree, minutes in decimal) [default]
+  //                                "deg-dec" (degree decimal),
+  //                                "utm" (universal transverse mercator) NOT CURRENTLY SUPPORTED
+  var buffer = this.cached;
+  if ('fix' in buffer) {
+  	var data = buffer['fix'];
+      var latPole = data['latPole'];
+      var lonPole = data['lonPole'];
+      var lat = data['lat'];
+      var lon = data['lon'];
+      var dec = lat.indexOf('.');
+      latDeg = parseFloat(lat.slice(0,dec-2));
+      latMin = parseFloat(lat.slice(dec-2, lat.length));
+      var dec = lon.indexOf('.');
+      lonDeg = parseFloat(lon.slice(0,dec-2));
+      lonMin = parseFloat(lon.slice(dec-2, lon.length));
+
+      if (format === 'utm') {
+          //if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
+          latitude = 'UTM not currently supported.'
+          longitude = 'Voice your outrage to @selkeymoonbeam.'
+      } else if (format === 'deg-min-sec') {
+          latSec = parseFloat(latMin.toString().split('.')[1] * .6);
+          latMin = parseInt(latMin.toString().split('.')[0]);
+
+          lonSec = parseFloat(lonMin.toString().split('.')[1] * .6);
+          lonMin = parseInt(lonMin.toString().split('.')[0]);
+
+          latitude = [latDeg, latMin, latSec, latPole];
+          longitude = [lonDeg, lonMin, lonSec, lonPole];
+      } else if (format === 'deg-dec') {
+          lat = latDeg + (latMin / 60);
+          lon = lonDeg + (lonMin / 60);
+
+          latitude = [lat, latPole];
+          longitude = [lon, lonPole];
+      } else {
+          latitude = [latDeg, latMin, latPole];
+          longitude = [lonDeg, lonMin, lonPole];
+      }
+      coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(data.timestamp)}
+  	return coordinates
+  } else {
+  	return 'no navigation data in buffer'
+  }
 }
 
 GPS.prototype.getAltitude = function (format) {

@@ -59,9 +59,8 @@ Get the current coordinates of the GPS module.
 Get the current altitude of the GPS module.
 *  **`gps`.getAltitude(`format`, `function(err, altitude) {...}` )**
 
-Get the current reachable satellites. Listen for 'satellite' event to receive satellite data.
-(`allowDuplicates` is an optional boolean to allow multiple events for the same satellite).
-*  **`gps`.getNumSatellites(`[allowDuplicates,]` `function(err) {...}` )**
+Get the current number of reachable satellites.
+*  **`gps`.getNumSatellites(`function(err) {...}` )**
 
 Get notified when the GPS is inside of specified geofence.
 
