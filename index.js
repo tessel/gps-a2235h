@@ -3,6 +3,7 @@ var tessel = require('tessel');
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
+var Packetizer = require('./lib/packetizer');
 
 var GPS = function (hardware, callback) {
 	//set this.types for each type
@@ -10,117 +11,107 @@ var GPS = function (hardware, callback) {
 	this.hardware = hardware;
 	this.onOff = this.hardware.gpio(3);
 	this.powerState = 'off';
-
-	var self = this;
-
-
-	// TODO: We should remove this block. It will really slow things down
-	// If we are getting lots of data
-	// this.uart.on('data', function(bytes) {
-	// 	console.log("early data", bytes);
-	// 	// And the state is off
-	// 	if (this.powerState === 'off') {
-	// 		// Turn the state on
-	// 		this.powerState = 'on';
-	// 	}
-	// });
+  this.cached = {};
 
 	// Turn the module on
 	this.initialPowerSequence(function(err) {
     console.log("In callback");
     if (!err) {
       // Once we are on, emit the connected event
-      console.log("Finished power sequence.")
-      // Make an object called buffer?
-      self.buffer = {};
-
-      // An incoming string to build on
-      var incoming = "";
-      // All receiving is done over a receive event:
-      self.uart.on('data', function(bytes) {
-        console.log("data", bytes);
-        // Emit a data event?
-        self.emit('data');
-        // For each byte we receive
-        bytes.forEach(function (line) {
-          // Turn each byte into a character
-          var currentChar = String.fromCharCode(parseInt(line));
-          // If we receive a dollar sign
-          if (currentChar === '$') {
-
-            self.updateBuffer(incoming);
-            incoming = '$'
-          } else {
-            incoming += currentChar;
-          }
-        });
-      });
+      console.log("Finished power sequence.");
+      this.beginDecoding(function() {
+        console.log("Done decoding...");
+        // setImmediate(function() {
+        //   console.log("Done Emitting...");
+        //   this.emit('ready');
+        // }.bind(this))
+      }.bind(this));
     }
     else {
-      callback && callback(err);
-
+      setImmediate(function() {
+        this.emit('error', err);
+      }.bind(this))
     }
-	});
+	}.bind(this));
 }
 
 util.inherits(GPS, EventEmitter);
 
 GPS.prototype.initialPowerSequence = function(callback) {
+
+  var self = this;
 	// Tell Tessel to start UART at GPS baud rate
 	this.uart = this.hardware.UART({baudrate : 115200});
 
-	this.uart.on('data', function waitForValidData(bytes) {
-		console.log("Got something legit!", bytes);
-		if (bytes[0] === 0xA0) {
-			console.log("This shit is on!");
-			this.powerState = 'on';
-			this.removeListener('data', waitForValidData);
-		}
+  var noReceiveTimeout;
 
-	}.bind(this));
-  console.log("First high...");
-	this.powerOn(function() {
-    if (this.powerState != 'on') {
-      console.log("Second high...");
-      this.powerOn(function() {
+  function waitForValidData(bytes) {
 
-        if (this.powerState != 'on') {
-          console.log("It's still not working pal...");
-          return callback && callback(new Error("Unable to communicate with module..."));
-        }
-        else {
-          console.log("We're all set. Changing baud rate");
-          this.uartExchange(callback);
-        }
-      }.bind(this));
-    }
-    else {
-      // Exchanging uart baud
-      this.uartExchange(callback);
-    }
-	}.bind(this));
+    console.log("Shit got data", bytes);
+    // If the leading byte is the header bit
+    // Remove this listener
+    self.removeListener('data', waitForValidData);
+
+    clearTimeout(noReceiveTimeout);
+
+    // And not that we are on
+    self.powerState = 'on';
+
+    self.uartExchange(callback);
+  }
+
+  function noDataRecieved() {
+    console.log("No data received bro...");
+    self.removeListener('data', waitForValidData);
+    clearTimeout(noReceiveTimeout);
+    callback && callback(new Error("Unable to connect to module..."));
+  }
+
+  /*
+  Wait for a second to see if we get data. If we do, call callback;
+  If we don't, toggle power and set timeout again
+  If we still don't get it, something bigger is wrong
+  */
+
+  // This event listener will wait for valid data to note that we are on
+	this.uart.once('data', waitForValidData);
+
+  noReceiveTimeout = setTimeout(function alreadyOn() {
+    console.log("Wasn't initially on...");
+    this.powerOn(function() {
+      noReceiveTimeout = setTimeout(function() {
+        console.log("Is it here?");
+        noDataRecieved();
+        console.log("Maybe"); 
+      }, 1000);
+    });
+  }.bind(this), 1000);
+
 }
 
-
+// Try to turn the power on.
+// The GPS holds toggle state but we can't sometimes we
+// may have to toggle power twice. 
 GPS.prototype.powerOn = function (callback) {
 	var self = this;
-    // In 1.5 seconds
-    setTimeout(function() {
-			// Pull the power pin high
-			console.log("Going high.");
-	    self.onOff.output().high();
-			// Wait for 250 ms
-	    tessel.sleep(250); //should change this out for setTimeout when that works
-			// Pull it back down
-			console.log("Going low.");
-	    self.onOff.low();
-			// Wait another 250 ms
-	    tessel.sleep(250);
-			// Consider the power to be on
-	    // self.powerState = 'on';
-			// Return
-    	callback && callback();
-	}, 1500);
+  // Pull power high
+  if (this.powerState === 'off') {
+    console.log("High");
+    self.onOff.output().high();
+
+    setTimeout(function backLow() {
+      // Pull power low
+      console.log("Low")
+      self.onOff.low();
+      // Set a timeout for it to have time to turn on and start sending
+      setTimeout(callback, 100);
+    }, 250);
+
+  }
+  else {
+
+    callback && callback();
+  }
 }
 
 GPS.prototype.powerOff = function (callback) {
@@ -136,9 +127,25 @@ GPS.prototype.powerOff = function (callback) {
     callback && callback();
 }
 
+// Eventually replace this with stream packetizing... sorry Kolker
+GPS.prototype.beginDecoding = function(callback) {
+
+  // var packetizer = new Packetizer(this.uart);
+  // packetizer.packetize();
+  // packetizer.on('packet', function(packet) {
+  //   var datum = nmea.parse(packet);
+  //   if (datum) {
+  //     var type = datum.type.toString();
+  //     //update each type in buffer to latest data
+  //     this.cached[type] = datum;
+  //   }
+  // });
+  callback && callback();
+}
+
 GPS.prototype.uartExchange = function (callback) {
 	//Configure GPS baud rate to NMEA
-	var characters = [0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3];
+	var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
 
 	this.uart.write(characters);
 
@@ -148,23 +155,13 @@ GPS.prototype.uartExchange = function (callback) {
   return callback && callback();
 }
 
-GPS.prototype.updateBuffer = function (incoming) {
-	var datum = nmea.parse(incoming);
-	if (datum != undefined) {
-		var type = datum.type.toString();
-		//update each type in buffer to latest data
-		this.buffer[type] = datum;
-	}
-}
-
-
 GPS.prototype.getCoordinates = function (format) {
     //returns the latest received coordinates of the device and a timestamp
     //format can be "deg-min-sec" (degree, minute, second),
     //                                "deg-min-dec" (degree, minutes in decimal) [default]
     //                                "deg-dec" (degree decimal),
     //                                "utm" (universal transverse mercator) NOT CURRENTLY SUPPORTED
-    var buffer = this.buffer;
+    var buffer = this.cached;
     if ('fix' in buffer) {
     	var data = buffer['fix'];
         var latPole = data['latPole'];
@@ -210,7 +207,7 @@ GPS.prototype.getCoordinates = function (format) {
 GPS.prototype.getAltitude = function (format) {
         //returns the latest received altitude of the device and a timestamp
         //default is in meters, format 'feet' also available
-        var buffer = this.buffer;
+        var buffer = this.cached;
         if ('fix' in buffer) {
         	data = buffer['fix'];
         	data.alt = parseInt(data.alt);
@@ -223,7 +220,7 @@ GPS.prototype.getAltitude = function (format) {
 
 GPS.prototype.getSatellites = function () {
 	//returns number of satellites last found
-	var buffer = this.buffer;
+	var buffer = this.cached;
 	if ('fix' in buffer) {
 		data = buffer['fix'];
 		numSat = data.numSat;
@@ -234,7 +231,7 @@ GPS.prototype.getSatellites = function () {
 GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
 	// takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
 	// returns boolean 'inRange' which is true when coordinates are in the rectangle
-	var buffer = this.buffer;
+	var buffer = this.cached;
 	var inRange = false;
 	if ((minCoordinates.lat.length === 2) && (maxCoordinates.lat.length === 2)) {
 		if (minCoordinates.lat[1] === 'S') {
@@ -251,7 +248,7 @@ GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
 		} else {maxLon = maxCoordinates.lon[0]}
 
 		//get current coordinates
-		currentCoords = this.getCoordinates(this.buffer);
+		currentCoords = this.getCoordinates(this.cached);
 		if (currentCoords != 'no navigation data in buffer') {
 			if (currentCoords.lat[1] === 'S') {
 				currentLat = -currentCoords.lat[0];
@@ -271,9 +268,7 @@ GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
 }
 
 var connect = function(hardware) {
-	return new GPS(hardware, function(err, gps) {
-    if (err) throw err;
-  });
+	return new GPS(hardware);
 }
 
 module.exports.connect = connect;
