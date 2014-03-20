@@ -4,7 +4,7 @@ var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 
-var GPS = function (hardware) {
+var GPS = function (hardware, callback) {
 	//set this.types for each type
 	//type: fix, nav-info, 2waypoint, autopilot-b
 	this.hardware = hardware;
@@ -13,73 +13,111 @@ var GPS = function (hardware) {
 
 	var self = this;
 
-	// Tell Tessel to start UART at GPS baud rate
-	this.uart = this.hardware.UART({baudrate : 115200});
 
 	// TODO: We should remove this block. It will really slow things down
-	// If we ar getting any data
-	this.uart.on('data', function(bytes) {
-		console.log("early data", bytes);
-		// And the state is off
-		if (this.powerState === 'off') {
-			// Turn the state on
-			this.powerState = 'on';
-		}
-	});
+	// If we are getting lots of data
+	// this.uart.on('data', function(bytes) {
+	// 	console.log("early data", bytes);
+	// 	// And the state is off
+	// 	if (this.powerState === 'off') {
+	// 		// Turn the state on
+	// 		this.powerState = 'on';
+	// 	}
+	// });
 
 	// Turn the module on
-	this.powerOn(function() {
-		// Once we are on, emit the connected event
-		self.emit('connected');
-		// Make an object called buffer?
-		self.buffer = {};
+	this.initialPowerSequence(function(err) {
+    console.log("In callback");
+    if (!err) {
+      // Once we are on, emit the connected event
+      console.log("Finished power sequence.")
+      // Make an object called buffer?
+      self.buffer = {};
 
-		// An incoming string to build on
-		var incoming = "";
-		// All receiving is done over a receive event:
-		self.uart.on('data', function(bytes) {
-			console.log("data", bytes);
-			// Emit a data event?
-			self.emit('data');
-			// For each byte we receive
-			bytes.forEach(function (line) {
-				// Turn each byte into a character
-				var currentChar = String.fromCharCode(parseInt(line));
-				// If we receive a dollar sign
-				if (currentChar === '$') {
+      // An incoming string to build on
+      var incoming = "";
+      // All receiving is done over a receive event:
+      self.uart.on('data', function(bytes) {
+        console.log("data", bytes);
+        // Emit a data event?
+        self.emit('data');
+        // For each byte we receive
+        bytes.forEach(function (line) {
+          // Turn each byte into a character
+          var currentChar = String.fromCharCode(parseInt(line));
+          // If we receive a dollar sign
+          if (currentChar === '$') {
 
-					self.updateBuffer(incoming);
-					incoming = '$'
-				} else {
-					incoming += currentChar;
-				}
-			});
-		});
+            self.updateBuffer(incoming);
+            incoming = '$'
+          } else {
+            incoming += currentChar;
+          }
+        });
+      });
+    }
+    else {
+      callback && callback(err);
+
+    }
 	});
 }
 
 util.inherits(GPS, EventEmitter);
 
+GPS.prototype.initialPowerSequence = function(callback) {
+	// Tell Tessel to start UART at GPS baud rate
+	this.uart = this.hardware.UART({baudrate : 115200});
+
+	this.uart.on('data', function waitForValidData(bytes) {
+		console.log("Got something legit!", bytes);
+		if (bytes[0] === 0xA0) {
+			console.log("This shit is on!");
+			this.powerState = 'on';
+			this.removeListener('data', waitForValidData);
+		}
+
+	}.bind(this));
+  console.log("First high...");
+	this.powerOn(function() {
+    if (this.powerState != 'on') {
+      console.log("Second high...");
+      this.powerOn(function() {
+
+        if (this.powerState != 'on') {
+          console.log("It's still not working pal...");
+          return callback && callback(new Error("Unable to communicate with module..."));
+        }
+        else {
+          console.log("We're all set. Changing baud rate");
+          this.uartExchange(callback);
+        }
+      }.bind(this));
+    }
+    else {
+      // Exchanging uart baud
+      this.uartExchange(callback);
+    }
+	}.bind(this));
+}
+
+
 GPS.prototype.powerOn = function (callback) {
 	var self = this;
     // In 1.5 seconds
     setTimeout(function() {
-
-			// If the power is off
-    	if (power === 'off') {
-					// Pull the power pin high
-	        self.onOff.output().high();
-					// Wait for 250 ms
-	        tessel.sleep(250); //should change this out for setTimeout when that works
-					// Pull it back down
-	        self.onOff.low();
-					// Wait another 250 ms
-	        tessel.sleep(250);
-					// Consider the power to be on
-	        power = 'on';
-    	}
-			// call setup
-    	self.setup(self.hardware)
+			// Pull the power pin high
+			console.log("Going high.");
+	    self.onOff.output().high();
+			// Wait for 250 ms
+	    tessel.sleep(250); //should change this out for setTimeout when that works
+			// Pull it back down
+			console.log("Going low.");
+	    self.onOff.low();
+			// Wait another 250 ms
+	    tessel.sleep(250);
+			// Consider the power to be on
+	    // self.powerState = 'on';
 			// Return
     	callback && callback();
 	}, 1500);
@@ -98,16 +136,16 @@ GPS.prototype.powerOff = function (callback) {
     callback && callback();
 }
 
-GPS.prototype.setup = function () {
-	// Tell Tessel to start UART at GPS baud rate
-	this.uart = this.hardware.UART({baudrate : 115200});
-
+GPS.prototype.uartExchange = function (callback) {
 	//Configure GPS baud rate to NMEA
 	var characters = [0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3];
+
 	this.uart.write(characters);
 
 	//Reset baud rate to talk to Tessel
 	this.uart = this.hardware.UART({baudrate : 9600});
+
+  return callback && callback();
 }
 
 GPS.prototype.updateBuffer = function (incoming) {
@@ -233,7 +271,9 @@ GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
 }
 
 var connect = function(hardware) {
-	return new GPS(hardware);
+	return new GPS(hardware, function(err, gps) {
+    if (err) throw err;
+  });
 }
 
 module.exports.connect = connect;
