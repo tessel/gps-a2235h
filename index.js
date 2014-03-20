@@ -4,39 +4,50 @@ var util = require('util');
 var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 
-var power = 'off';
-
 var GPS = function (hardware) {
 	//set this.types for each type
 	//type: fix, nav-info, 2waypoint, autopilot-b
 	this.hardware = hardware;
 	this.onOff = this.hardware.gpio(3);
+	this.powerState = 'off';
 
 	var self = this;
 
 	// Tell Tessel to start UART at GPS baud rate
 	this.uart = this.hardware.UART({baudrate : 115200});
 
+	// TODO: We should remove this block. It will really slow things down
+	// If we ar getting any data
 	this.uart.on('data', function(bytes) {
-		if (power === 'off') {
-			power = 'on';
+		console.log("early data", bytes);
+		// And the state is off
+		if (this.powerState === 'off') {
+			// Turn the state on
+			this.powerState = 'on';
 		}
-    console.log(bytes);
 	});
 
+	// Turn the module on
 	this.powerOn(function() {
+		// Once we are on, emit the connected event
 		self.emit('connected');
+		// Make an object called buffer?
 		self.buffer = {};
 
-		var incoming = new String;
+		// An incoming string to build on
+		var incoming = "";
 		// All receiving is done over a receive event:
 		self.uart.on('data', function(bytes) {
+			console.log("data", bytes);
+			// Emit a data event?
 			self.emit('data');
-      var d = '';
-			Array.prototype.forEach.call(bytes, function (line) {
+			// For each byte we receive
+			bytes.forEach(function (line) {
+				// Turn each byte into a character
 				var currentChar = String.fromCharCode(parseInt(line));
-        console.log(currentChar);
+				// If we receive a dollar sign
 				if (currentChar === '$') {
+
 					self.updateBuffer(incoming);
 					incoming = '$'
 				} else {
@@ -51,16 +62,25 @@ util.inherits(GPS, EventEmitter);
 
 GPS.prototype.powerOn = function (callback) {
 	var self = this;
-    //turns on GPS
+    // In 1.5 seconds
     setTimeout(function() {
-    	if (power == 'off') {
+
+			// If the power is off
+    	if (power === 'off') {
+					// Pull the power pin high
 	        self.onOff.output().high();
+					// Wait for 250 ms
 	        tessel.sleep(250); //should change this out for setTimeout when that works
+					// Pull it back down
 	        self.onOff.low();
+					// Wait another 250 ms
 	        tessel.sleep(250);
+					// Consider the power to be on
 	        power = 'on';
     	}
+			// call setup
     	self.setup(self.hardware)
+			// Return
     	callback && callback();
 	}, 1500);
 }
@@ -77,6 +97,28 @@ GPS.prototype.powerOff = function (callback) {
     }
     callback && callback();
 }
+
+GPS.prototype.setup = function () {
+	// Tell Tessel to start UART at GPS baud rate
+	this.uart = this.hardware.UART({baudrate : 115200});
+
+	//Configure GPS baud rate to NMEA
+	var characters = [0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3];
+	this.uart.write(characters);
+
+	//Reset baud rate to talk to Tessel
+	this.uart = this.hardware.UART({baudrate : 9600});
+}
+
+GPS.prototype.updateBuffer = function (incoming) {
+	var datum = nmea.parse(incoming);
+	if (datum != undefined) {
+		var type = datum.type.toString();
+		//update each type in buffer to latest data
+		this.buffer[type] = datum;
+	}
+}
+
 
 GPS.prototype.getCoordinates = function (format) {
     //returns the latest received coordinates of the device and a timestamp
@@ -190,30 +232,8 @@ GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
 	} else {return 'please use deg-dec coordinates'}
 }
 
-GPS.prototype.setup = function () {
-	// Tell Tessel to start UART at GPS baud rate
-	this.uart = this.hardware.UART({baudrate : 115200});
-
-	//Configure GPS baud rate to NMEA
-	var characters = [0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3];
-	this.uart.write(characters);
-
-	//Reset baud rate to talk to Tessel
-	this.uart = this.hardware.UART({baudrate : 9600});
-}
-
-GPS.prototype.updateBuffer = function (incoming) {
-	var datum = nmea.parse(incoming);
-	if (datum != undefined) {
-		var type = datum.type.toString();
-		//update each type in buffer to latest data
-		this.buffer[type] = datum;
-	}
-}
-
 var connect = function(hardware) {
-	var gps = new GPS(hardware);
-	return gps;
+	return new GPS(hardware);
 }
 
 module.exports.connect = connect;

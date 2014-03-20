@@ -6,7 +6,7 @@ For best results, try it while outdoors.
 *********************************************/
 
 var tessel = require('tessel');
-var gps = require('../').connect(tessel.port("A"));
+var gps = require('../').connect(tessel.port("a"));
 
 // Initialize the GPS
 gps.on('connected', function() {
@@ -22,10 +22,6 @@ gps.on('connected', function() {
 	});
 });
 
-var led1 = tessel.led(1).output().high();
-var led2 = tessel.led(2).output().low();
+setInterval(function() {
 
-setInterval(function () {
-  led1.toggle();
-  led2.toggle();
-}, 100);
+}, 20000);
