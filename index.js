@@ -5,7 +5,7 @@ var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 var Packetizer = require('./lib/packetizer');
 
-var DEBUG = false;
+var DEBUG = true;
 
 var GPS = function (hardware, callback) {
   //set this.types for each type
@@ -68,8 +68,11 @@ GPS.prototype.initialPowerSequence = function(callback) {
   }
 
   function noDataRecieved() {
+    // Remove the listener for any data
     self.removeListener('data', waitForValidData);
+    // Clear the timeout 
     clearTimeout(noReceiveTimeout);
+    // Call the callback
     callback && callback(new Error("Unable to connect to module..."));
   }
 
@@ -82,14 +85,21 @@ GPS.prototype.initialPowerSequence = function(callback) {
   // This event listener will wait for valid data to note that we are on
   this.uart.once('data', waitForValidData);
 
+  // Set the timeout to try to turn on if not already
   noReceiveTimeout = setTimeout(function alreadyOn() {
+    // Try to turn on
     this.powerOn(function() {
+      // If it's still not on
+      if (DEBUG) console.log("state after power cycle:", this.powerState);
       if (this.powerState === 'off') {
+        // Set the timeout once more
+        if (DEBUG) console.log("Trying once more...");
         noReceiveTimeout = setTimeout(function() {
+          // If we still didn't get anything, fail the connect
           noDataRecieved();
         }, 1000);
       }
-    });
+    }.bind(this));
   }.bind(this), 1000);
 
 }
@@ -141,6 +151,7 @@ GPS.prototype.beginDecoding = function(callback) {
   packetizer.packetize();
   // When we get a packet
   packetizer.on('packet', function(packet) {
+    if (DEBUG) console.log("Got packet.");
     // Make sure this is a valid packet
     if (packet[0] === '$') {
       // Parse it
@@ -162,6 +173,7 @@ GPS.prototype.uartExchange = function (callback) {
   //Configure GPS baud rate to NMEA
   var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
 
+  // Write the message
   this.uart.write(characters);
 
   //Reset baud rate to talk to Tessel

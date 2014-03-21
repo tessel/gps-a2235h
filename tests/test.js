@@ -17,27 +17,28 @@ gps.on('error', function(err) {
 function beginTests() {
   async.waterfall(
     [
-    getCoordinateTest,
       getNumSatellitesTest,
       getCoordinateTest
     ],
     function(err, results) {
       if (err) {
-        failModule();
+        failModule(err);
       }
       else{
         passModule();
       }
     })
+
 }
 
-function getCoordinateTest() {
+function getCoordinateTest(callback) {
   console.log("Testing for coordinates...");
   gps.on('coordinates', function(coordinates) {
     console.log("Oh shit we actually got some?", coordinates);
   });
 
   gps.getCoordinates(function(err, coordinates) {
+    console.log("Nope, error", err);  
     if (err) {
       return callback && callback(err);
     }
@@ -47,7 +48,7 @@ function getCoordinateTest() {
   })
 } 
 
-function getNumSatellitesTest() {
+function getNumSatellitesTest(callback) {
   console.log("Running test to find number of satellites");
   var gate = 0;
   var eventNum;
