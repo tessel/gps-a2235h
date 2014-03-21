@@ -13,7 +13,6 @@ var GPS = function (hardware, callback) {
   this.hardware = hardware;
   this.onOff = this.hardware.gpio(3);
   this.powerState = 'off';
-  this.cached = {};
   this.timeoutDuration = 10*1000;
   this.format = 'deg-min-dec';
   this.numSats = 0;
@@ -108,16 +107,33 @@ GPS.prototype.initialPowerSequence = function(callback) {
 // The GPS holds toggle state but we can't sometimes we
 // may have to toggle power twice. 
 GPS.prototype.powerOn = function (callback) {
+  this.power('on', function() {
+    this.emit('powerOn');
+    callback && callback();
+  }.bind(this));
+}
+
+GPS.prototype.powerOff = function (callback) {
+  this.power('off', function() {
+    this.emit('powerOff');
+    callback && callback();
+  }.bind(this));
+}
+
+GPS.prototype.power = function(state, callback) {
+  // We should switch from this state to passed in state
+  var switchState = (state === 'on' ? 'off' : 'on');
   var self = this;
+
   // Pull power high
-  if (this.powerState === 'off') {
+  if (this.powerState === switchState) {
     if (DEBUG) console.log("high");
     self.onOff.output().high();
     setTimeout(function backLow() {
       if (DEBUG) console.log("low");
       self.onOff.low();
       // Pull power low
-      if (this.powerState === 'off') {
+      if (this.powerState === switchState) {
         // Set a timeout for it to have time to turn on and start sending
         setTimeout(callback, 500);
       }
@@ -128,19 +144,6 @@ GPS.prototype.powerOn = function (callback) {
     callback && callback();
   }
 }
-
-// GPS.prototype.powerOff = function (callback) {
-// 	var self = this;
-//     //turns off GPS
-//     if (power === 'on') {
-//         self.onOff.output().high();
-//         tessel.sleep(250); //should change this out for setTimeout when that works
-//         self.onOff.low();
-//         tessel.sleep(250);
-//         power = 'off';
-//     }
-//     callback && callback();
-// }
 
 // Eventually replace this with stream packetizing... sorry Kolker
 GPS.prototype.beginDecoding = function(callback) {
@@ -182,7 +185,7 @@ GPS.prototype.uartExchange = function (callback) {
   return callback && callback();
 }
 
-GPS.prototype.setFormat = function(format) {
+GPS.prototype.setCoordinateFormat = function(format) {
   this.format = format;
   if (format === 'utm') {
     // if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
@@ -253,41 +256,32 @@ GPS.prototype.emitAltitude = function(data) {
   this.emit('altitude', {alt: alt, timestamp: parseFloat(data.timestamp)});
 }
 
-GPS.prototype.getNumSatellites = function(callback) {
+GPS.prototype.getAttribute = function(attribute, callback) {
   var failTimeout
-      , successHandler
-      , failHandler;
+    , failHandler
+    , successHandler;
 
-  successHandler = function(num) {
+  successHandler = function(attributeData) {
     clearTimeout(failTimeout);
-    callback && callback(null, num);
+    callback && callback(null, attributeData);
   }
 
   failHandler = function() {
-    this.removeListener('numSatellites', successHandler);
+    this.removeListener(attribute, successHandler);
     callback && callback(new Error("Timeout Error."));
   }
 
-  this.once('numSatellites', successHandler);
+  this.once(attribute, successHandler);
 
   failTimeout = setTimeout(failHandler.bind(this), this.timeoutDuration);
 }
 
-GPS.prototype.getCoordinates = function (callback) {
-  var failTimeout
-    , successHandler;
+GPS.prototype.getNumSatellites = function(callback) {
+  this.getAttribute('numSatellites', callback);
+}
 
-  successHandler = function(coordinates) {
-    clearTimeout(failTimeout);
-    callback && callback(null, coordinates);
-  }
-
-  failHandler = function() {
-    this.removeListener('coordinates', successHandler);
-    callback && callback(new Error("Timeout Error."));
-  }
-
-  this.getNumSatellites(function(err, num) {
+GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
+  this.getAttribute('numSatellites', function(err, num) {
     if (err) {
       return callback && callback(err);
     }
@@ -295,30 +289,16 @@ GPS.prototype.getCoordinates = function (callback) {
       return callback && callback(new Error("No Satellites available."));
     }
     else {
-      this.once('coordinates', successHandler);
-      failTimeout = setTimeout(failHandler.bind(this), this.timeoutDuration);
+      this.getAttribute(attribute, callback);
     }
   }.bind(this));
 }
+GPS.prototype.getCoordinates = function (callback) {
+  this.getNumSatDependentAttribute('coordinates', callback);
+}
 
 GPS.prototype.getAltitude = function (callback) {
-  var failTimeout
-      , successHandler
-      , failHandler;
-
-  successHandler = function(altitude) {
-    clearTimeout(failTimeout);
-    callback && callback(null, altitude);
-  }
-
-  failHandler = function() {
-    this.removeListener('altitude', successHandler);
-    callback && callback(new Error("Timeout Error."));
-  }
-
-  this.once('altitude', successHandler);
-
-  failTimeout = setTimeout(failHandler.bind(this), this.timeoutDuration);
+  this.getNumSatDependentAttribute('altitude', callback);
 }
 
 // GPS.prototype.getSatellites = function () {

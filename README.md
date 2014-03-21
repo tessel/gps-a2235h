@@ -54,10 +54,10 @@ gps.on('error', function(err) {
 ##Methods
 
 Get the current coordinates of the GPS module.
-*  **`gps`.getCoordinates(`format`, `function(err, coordinates) {...}` )**
+*  **`gps`.getCoordinates(`function(err, coordinates) {...}` )**
 
 Get the current altitude of the GPS module.
-*  **`gps`.getAltitude(`format`, `function(err, altitude) {...}` )**
+*  **`gps`.getAltitude(`function(err, altitude) {...}` )**
 
 Get the current number of reachable satellites.
 *  **`gps`.getNumSatellites(`function(err) {...}` )**
@@ -75,7 +75,7 @@ Turn the GPS off.
 
 Set the format that you would like data to be returned.
 Current options are `'deg-min-sec'` or `'deg-dec'`. Default is `'deg-min-dec'`.
-*  **`gps`.powerOff(`function(err) {...}`)**
+*  **`gps`.setCoordinateFormat(`format`)**
 
 ##Events
 

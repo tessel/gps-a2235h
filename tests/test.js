@@ -31,6 +31,23 @@ function beginTests() {
 
 }
 
+function getAltitudeTest(callback) {
+  console.log("Testing for altitude...");
+  gps.on('altitude', function(altitude){
+    console.log("Oh shit we actually got some?", altitude);
+  });
+
+  gps.getAltitude(function(err, coordinates) {
+    console.log("Nope, error", err);  
+    if (err) {
+      return callback && callback(err);
+    }
+    else {
+      console.log("This is what we got", coordinates);
+    }
+  })
+}
+
 function getCoordinateTest(callback) {
   console.log("Testing for coordinates...");
   gps.on('coordinates', function(coordinates) {
@@ -38,7 +55,6 @@ function getCoordinateTest(callback) {
   });
 
   gps.getCoordinates(function(err, coordinates) {
-    console.log("Nope, error", err);  
     if (err) {
       return callback && callback(err);
     }
