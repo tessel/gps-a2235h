@@ -73,6 +73,10 @@ Turn the GPS on.
 Turn the GPS off.
 *  **`gps`.powerOff(`function(err) {...}`)**
 
+Set the format that you would like data to be returned.
+Current options are `'deg-min-sec'` or `'deg-dec'`. Default is `'deg-min-dec'`.
+*  **`gps`.powerOff(`function(err) {...}`)**
+
 ##Events
 
 `ready` called when module has can communicate with Tessel.

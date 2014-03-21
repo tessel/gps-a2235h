@@ -17,7 +17,9 @@ gps.on('error', function(err) {
 function beginTests() {
   async.waterfall(
     [
-      getNumSatellitesTest
+    getCoordinateTest,
+      getNumSatellitesTest,
+      getCoordinateTest
     ],
     function(err, results) {
       if (err) {
@@ -29,6 +31,22 @@ function beginTests() {
     })
 }
 
+function getCoordinateTest() {
+  console.log("Testing for coordinates...");
+  gps.on('coordinates', function(coordinates) {
+    console.log("Oh shit we actually got some?", coordinates);
+  });
+
+  gps.getCoordinates(function(err, coordinates) {
+    if (err) {
+      return callback && callback(err);
+    }
+    else {
+      console.log("This is what we got", coordinates);
+    }
+  })
+} 
+
 function getNumSatellitesTest() {
   console.log("Running test to find number of satellites");
   var gate = 0;
@@ -38,35 +56,24 @@ function getNumSatellitesTest() {
       return callback && callback(err);
     }
     else {
-      if (num != undefined && gate === 1) {
-        if (eventNum === num) {
-          console.log("Num Satellites Test Passed!");
-          callback && callback();
-        }
-        else {
-          callback && callback("Different values returned to event and callback.");
-        }
-      }
-      else {
-        callback && callback("Num Satellites event not hit or num undefined");
-      }
+      eventNum = num;
+      gate++;
     }
   });
 
   gps.once('numSatellites', function(num) {
-    gate++;
-    eventNum = num;
-  })
-}
-function getCoordinatesTest() {
-  gps.getCoordinates(function(err, coords) {
-    if (err) {
-      callback && callback(err);
-    }
-    else {
-      console.log("Got these sweet coordinates", coords);
-      callback && callback();
-    }
+      if (num != undefined && gate === 1) {
+        if (eventNum === num) {
+          console.log("Num Satellites Test Passed!");
+          return callback && callback();
+        }
+        else {
+          return callback && callback("Different values returned to event and callback.");
+        }
+      }
+      else {
+        return callback && callback("Num Satellites event not hit or num undefined");
+      }
   })
 }
 
@@ -79,6 +86,8 @@ function failModule(err) {
   console.log("Failed! Try again.", err);
   tessel.led(1).high();
 }
+
+setInterval(function() {}, 20000);
 
 // gps.on('connected', function() {
 // 	console.log('GPS connected. Waiting for data...');
