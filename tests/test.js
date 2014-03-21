@@ -17,7 +17,7 @@ gps.on('error', function(err) {
 function beginTests() {
   async.waterfall(
     [
-      getCoordinatesTest
+      getNumSatellitesTest
     ],
     function(err, results) {
       if (err) {
@@ -30,12 +30,32 @@ function beginTests() {
 }
 
 function getNumSatellitesTest() {
-  gps.getNumSatellites(function(err, num, timestamp) {
-    console.log("Got these many in the callback", num, timestamp);
+  console.log("Running test to find number of satellites");
+  var gate = 0;
+  var eventNum;
+  gps.getNumSatellites(function(err, num) {
+    if (err) {
+      return callback && callback(err);
+    }
+    else {
+      if (num != undefined && gate === 1) {
+        if (eventNum === num) {
+          console.log("Num Satellites Test Passed!");
+          callback && callback();
+        }
+        else {
+          callback && callback("Different values returned to event and callback.");
+        }
+      }
+      else {
+        callback && callback("Num Satellites event not hit or num undefined");
+      }
+    }
   });
 
-  gps.on('numSatellites', function(num, timestamp) {
-    console.log("Got this many in event", num, timestamp);
+  gps.once('numSatellites', function(num) {
+    gate++;
+    eventNum = num;
   })
 }
 function getCoordinatesTest() {

@@ -13,22 +13,24 @@ var GPS = function (hardware, callback) {
 	this.powerState = 'off';
   this.cached = {};
   this.timeoutDuration = 10*1000;
+  this.format;
 
 	// Turn the module on
 	this.initialPowerSequence(function(err) {
-    console.log("In callback");
     if (!err) {
       // Once we are on, emit the connected event
-      console.log("Finished power sequence.");
       this.beginDecoding(function() {
-        console.log("Done decoding...");
+
+        this.on('fix', this.onFix.bind(this));
+
         setImmediate(function() {
-          console.log("Done Emitting...");
           this.emit('ready');
-        }.bind(this))
+        }.bind(this));
+
       }.bind(this));
     }
     else {
+
       setImmediate(function() {
         this.emit('error', err);
       }.bind(this))
@@ -62,7 +64,6 @@ GPS.prototype.initialPowerSequence = function(callback) {
   }
 
   function noDataRecieved() {
-    console.log("No data received bro...");
     self.removeListener('data', waitForValidData);
     clearTimeout(noReceiveTimeout);
     callback && callback(new Error("Unable to connect to module..."));
@@ -78,12 +79,9 @@ GPS.prototype.initialPowerSequence = function(callback) {
 	this.uart.once('data', waitForValidData);
 
   noReceiveTimeout = setTimeout(function alreadyOn() {
-    console.log("Wasn't initially on...");
     this.powerOn(function() {
       noReceiveTimeout = setTimeout(function() {
-        console.log("Is it here?");
         noDataRecieved();
-        console.log("Maybe"); 
       }, 1000);
     });
   }.bind(this), 1000);
@@ -97,10 +95,8 @@ GPS.prototype.powerOn = function (callback) {
 	var self = this;
   // Pull power high
   if (this.powerState === 'off') {
-    console.log("High");
     self.onOff.output().high();
     setTimeout(function backLow() {
-      console.log("Low")
       self.onOff.low();
       // Pull power low
       if (this.powerState === 'off') {
@@ -111,40 +107,44 @@ GPS.prototype.powerOn = function (callback) {
 
   }
   else {
-
     callback && callback();
   }
 }
 
-GPS.prototype.powerOff = function (callback) {
-	var self = this;
-    //turns off GPS
-    if (power === 'on') {
-        self.onOff.output().high();
-        tessel.sleep(250); //should change this out for setTimeout when that works
-        self.onOff.low();
-        tessel.sleep(250);
-        power = 'off';
-    }
-    callback && callback();
-}
+// GPS.prototype.powerOff = function (callback) {
+// 	var self = this;
+//     //turns off GPS
+//     if (power === 'on') {
+//         self.onOff.output().high();
+//         tessel.sleep(250); //should change this out for setTimeout when that works
+//         self.onOff.low();
+//         tessel.sleep(250);
+//         power = 'off';
+//     }
+//     callback && callback();
+// }
 
 // Eventually replace this with stream packetizing... sorry Kolker
 GPS.prototype.beginDecoding = function(callback) {
 
+  // Initializer our packetizer
   var packetizer = new Packetizer(this.uart);
+  // Tell it to start packetizing
   packetizer.packetize();
+  // When we get a packet
   packetizer.on('packet', function(packet) {
-    var datum = nmea.parse(packet);
-    if (datum) {
-      var type = datum.type.toString();
-      //update each type in buffer to latest data
-      this.cached[type] = datum;
-      this.emitNumSatellites(datum);
-      this.emitCoordinates(datum);
-      this.emitAltitude(datum);
+    // Make sure this is a valid packet
+    if (packet[0] === '$') {
+      // Parse it
+      var datum = nmea.parse(packet);
+      // If sucessful
+      if (datum) {
+        // Emit the type of packet
+        this.emit(datum.type, datum);
+      }
     }
-  });
+  }.bind(this));
+  
   callback && callback();
 }
 
@@ -160,12 +160,18 @@ GPS.prototype.uartExchange = function (callback) {
   return callback && callback();
 }
 
-GPS.prototype.emitNumSatellites = function(datum) {
-  var fix = datum['fix'];
+GPS.prototype.setFormat = function(format) {
 
-  if (fix) {
-    this.emit('numSatellites', data.numSat, parseFloat(data.timestamp));
-  }
+}
+
+GPS.prototype.onFix = function(fix) {
+  this.emitNumSatellites(fix);
+}
+
+GPS.prototype.emitNumSatellites = function(fix) {
+  setImmediate(function() {
+    this.emit('numSatellites', fix.numSat);
+  }.bind(this));
 }
 
 GPS.prototype.emitCoordinates = function(datum) {
@@ -181,19 +187,19 @@ GPS.prototype.getNumSatellites = function(callback) {
       , successHandler
       , failHandler;
 
-  successHandler = function gotSatellites(num, timestamp) {
+  successHandler = function(num) {
     clearTimeout(failTimeout);
-    callback && callback(num, timestamp);
+    callback && callback(null, num);
   }
 
   failHandler = function() {
-    this.removeListener('numSattelites', listener);
+    this.removeListener('numSattelites', successHandler);
     callback && callback(new Error("Timeout Error."));
   }
 
-  this.once('numSattelites', successHandler);
+  this.once('numSatellites', successHandler);
 
-  setTimeout(failHandler, this.timeoutDuration);
+  setTimeout(failHandler.bind(this), this.timeoutDuration);
 }
 
 GPS.prototype.getCoordinates = function (format, callback) {
@@ -251,68 +257,68 @@ GPS.prototype.getCoordinates = function (format, callback) {
   }
 }
 
-GPS.prototype.getAltitude = function (format) {
-        //returns the latest received altitude of the device and a timestamp
-        //default is in meters, format 'feet' also available
-        var buffer = this.cached;
-        if ('fix' in buffer) {
-        	data = buffer['fix'];
-        	data.alt = parseInt(data.alt);
-        	if (format === 'feet') {
-                alt = (data.alt / .0254) / 12;
-	        } else {alt = data.alt}
-	        return {alt: alt, timestamp: parseFloat(data.timestamp)};
-        } else {return 'no altitude data in buffer'}
-}
+// GPS.prototype.getAltitude = function (format) {
+//         //returns the latest received altitude of the device and a timestamp
+//         //default is in meters, format 'feet' also available
+//         var buffer = this.cached;
+//         if ('fix' in buffer) {
+//         	data = buffer['fix'];
+//         	data.alt = parseInt(data.alt);
+//         	if (format === 'feet') {
+//                 alt = (data.alt / .0254) / 12;
+// 	        } else {alt = data.alt}
+// 	        return {alt: alt, timestamp: parseFloat(data.timestamp)};
+//         } else {return 'no altitude data in buffer'}
+// }
 
-GPS.prototype.getSatellites = function () {
-	//returns number of satellites last found
-	var buffer = this.cached;
-	if ('fix' in buffer) {
-		data = buffer['fix'];
-		numSat = data.numSat;
-		return {numSat: numSat, timestamp: parseFloat(data.timestamp)};
-	} else {return 'no satellite data in buffer'}
-}
+// GPS.prototype.getSatellites = function () {
+// 	//returns number of satellites last found
+// 	var buffer = this.cached;
+// 	if ('fix' in buffer) {
+// 		data = buffer['fix'];
+// 		numSat = data.numSat;
+// 		return {numSat: numSat, timestamp: parseFloat(data.timestamp)};
+// 	} else {return 'no satellite data in buffer'}
+// }
 
-GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
-	// takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
-	// returns boolean 'inRange' which is true when coordinates are in the rectangle
-	var buffer = this.cached;
-	var inRange = false;
-	if ((minCoordinates.lat.length === 2) && (maxCoordinates.lat.length === 2)) {
-		if (minCoordinates.lat[1] === 'S') {
-			minLat = -minCoordinates.lat[0];
-		} else {minLat = minCoordinates.lat[0]}
-		if (minCoordinates.lon[1] === 'W') {
-			minLon = -minCoordinates.lon[0];
-		} else {minLon = minCoordinates.lon[0]}
-		if (maxCoordinates.lat[1] === 'S') {
-			maxLat = -maxCoordinates.lat[0];
-		} else {maxLat = maxCoordinates.lat[0]}
-		if (maxCoordinates.lon[1] === 'W') {
-			maxLon = -maxCoordinates.lon[0];
-		} else {maxLon = maxCoordinates.lon[0]}
+// GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
+// 	// takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
+// 	// returns boolean 'inRange' which is true when coordinates are in the rectangle
+// 	var buffer = this.cached;
+// 	var inRange = false;
+// 	if ((minCoordinates.lat.length === 2) && (maxCoordinates.lat.length === 2)) {
+// 		if (minCoordinates.lat[1] === 'S') {
+// 			minLat = -minCoordinates.lat[0];
+// 		} else {minLat = minCoordinates.lat[0]}
+// 		if (minCoordinates.lon[1] === 'W') {
+// 			minLon = -minCoordinates.lon[0];
+// 		} else {minLon = minCoordinates.lon[0]}
+// 		if (maxCoordinates.lat[1] === 'S') {
+// 			maxLat = -maxCoordinates.lat[0];
+// 		} else {maxLat = maxCoordinates.lat[0]}
+// 		if (maxCoordinates.lon[1] === 'W') {
+// 			maxLon = -maxCoordinates.lon[0];
+// 		} else {maxLon = maxCoordinates.lon[0]}
 
-		//get current coordinates
-		currentCoords = this.getCoordinates(this.cached);
-		if (currentCoords != 'no navigation data in buffer') {
-			if (currentCoords.lat[1] === 'S') {
-				currentLat = -currentCoords.lat[0];
-			} else {currentLat = currentCoords.lat[0]}
-			if (currentCoords.lon[1] === 'W') {
-				currentLon = -currentCoords.lon[0];
-			} else {currentLon = currentCoords.lon[0]}
+// 		//get current coordinates
+// 		currentCoords = this.getCoordinates(this.cached);
+// 		if (currentCoords != 'no navigation data in buffer') {
+// 			if (currentCoords.lat[1] === 'S') {
+// 				currentLat = -currentCoords.lat[0];
+// 			} else {currentLat = currentCoords.lat[0]}
+// 			if (currentCoords.lon[1] === 'W') {
+// 				currentLon = -currentCoords.lon[0];
+// 			} else {currentLon = currentCoords.lon[0]}
 
-			//compare current coordinates with geofence
-			if ((currentLat > minLat) && (currentLat < maxLat) && (currentLon > minLon) && (currentLon < maxLon)) {
-				inRange = true;
-			} else {inRange = false}
-			var timestamp = currentCoords.timestamp;
-			return {inRange: inRange, timestamp: timestamp}
-		} else {return 'no position data'}
-	} else {return 'please use deg-dec coordinates'}
-}
+// 			//compare current coordinates with geofence
+// 			if ((currentLat > minLat) && (currentLat < maxLat) && (currentLon > minLon) && (currentLon < maxLon)) {
+// 				inRange = true;
+// 			} else {inRange = false}
+// 			var timestamp = currentCoords.timestamp;
+// 			return {inRange: inRange, timestamp: timestamp}
+// 		} else {return 'no position data'}
+// 	} else {return 'please use deg-dec coordinates'}
+// }
 
 var connect = function(hardware) {
 	return new GPS(hardware);

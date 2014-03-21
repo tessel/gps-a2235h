@@ -88,7 +88,7 @@ Turn the GPS off.
 * **`gps`.on(`altitude`, `function(altitude) {...}` )**
  
 `numSatellites` called when we've discovered all available satellites. If this number is zero, you won't be able to get GPS data.
-* **`gps`.on(`numSatellites`, `function(satellite) {...}` )**
+* **`gps`.on(`numSatellites`, `function(numSatellites) {...}` )**
 
 `geofence` called when the module has entered a geofence.
 * **`gps`.on(`geofence`, `function(coordinates) {...}` )**

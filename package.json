@@ -10,9 +10,12 @@
   "author": "Kelsey Breseman <kelsey@technical.io>",
   "license": "MIT",
   "dependencies": {
-    "nmea": "0.0.6"
+    "nmea": "0.0.6",
+    "async" : "*",
+    "chai" : "*"
   },
   "devDependencies" : {
-    "async" : "*"
+    "async" : "*",
+    "chai" : "*"
   }
 }
