@@ -17,6 +17,7 @@ gps.on('error', function(err) {
 function beginTests() {
   async.waterfall(
     [
+      powerTest,
       getNumSatellitesTest,
       getCoordinateTest
     ],
@@ -92,6 +93,29 @@ function getNumSatellitesTest(callback) {
         return callback && callback("Num Satellites event not hit or num undefined");
       }
   })
+}
+
+function powerTest(callback) {
+  console.log("Power Test. Turning off!");
+  gps.powerOff(function() {
+    this.once('powerOff', function() {
+      function betterNotCall(num) {
+        callback && callback(new Error("Received packet after turning off"));
+      }
+
+      gps.on('numSatellites', betterNotCall);
+
+      setTimeout(function() {
+        console.log("Should be done with power test!");
+        gps.removeListener('numSatellites', betterNotCall);
+
+        gps.powerOn(function() {
+          console.log("Power Test passed!");
+          callback && callback();
+        });
+      }, 5000);
+    });
+  });
 }
 
 function passModule() {

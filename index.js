@@ -108,14 +108,18 @@ GPS.prototype.initialPowerSequence = function(callback) {
 // may have to toggle power twice. 
 GPS.prototype.powerOn = function (callback) {
   this.power('on', function() {
-    this.emit('powerOn');
+    setImmediate(function() {
+      this.emit('powerOn');
+    }.bind(this))
     callback && callback();
   }.bind(this));
 }
 
 GPS.prototype.powerOff = function (callback) {
   this.power('off', function() {
-    this.emit('powerOff');
+    setImmediate(function() {
+      this.emit('powerOff');
+    }.bind(this))
     callback && callback();
   }.bind(this));
 }
@@ -163,8 +167,10 @@ GPS.prototype.beginDecoding = function(callback) {
       if (DEBUG) { console.log("Got Data: ", datum);}
       // If sucessful
       if (datum) {
-        // Emit the type of packet
-        this.emit(datum.type, datum);
+        setImmediate(function() {
+          // Emit the type of packet
+          this.emit(datum.type, datum);
+        }.bind(this));
       }
     }
   }.bind(this));
@@ -208,8 +214,21 @@ GPS.prototype.onFix = function(fix) {
 }
 
 GPS.prototype.emitNumSatellites = function(fix) {
+  if (this.numSats === 0 && fix.numSat > 0) {
+    setImmediate(function() {
+      this.emit('connected', fix.numSat);
+    }.bind(this));
+  }
+  else if (this.numSats > 0 && fix.numSat === 0) {
+    setImmediate(function() {
+      this.emit('disconnected', fix.numSat);
+    }.bind(this));
+  }
   this.numSats = fix.numSat;
-  this.emit('numSatellites', fix.numSat); 
+
+  setImmediate(function() {
+    this.emit('numSatellites', fix.numSat);
+  }.bind(this));
 }
 
 GPS.prototype.emitCoordinates = function(data) {
@@ -247,13 +266,22 @@ GPS.prototype.emitCoordinates = function(data) {
     }
     coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(data.timestamp)}
 
-    this.emit('coordinates', coordinates);
+    setImmediate(function() {
+      this.emit('altitude', {alt: alt, timestamp: parseFloat(data.timestamp)});
+    }.bind(this));
   }
 }
 
 GPS.prototype.emitAltitude = function(data) {
-  data.alt = parseInt(data.alt);
-  this.emit('altitude', {alt: alt, timestamp: parseFloat(data.timestamp)});
+
+  if (this.numSas != 0) {
+
+    data.alt = parseInt(data.alt);
+
+    setImmediate(function() {
+      this.emit('altitude', {alt: alt, timestamp: parseFloat(data.timestamp)});
+    }.bind(this));
+  }
 }
 
 GPS.prototype.getAttribute = function(attribute, callback) {
@@ -300,16 +328,6 @@ GPS.prototype.getCoordinates = function (callback) {
 GPS.prototype.getAltitude = function (callback) {
   this.getNumSatDependentAttribute('altitude', callback);
 }
-
-// GPS.prototype.getSatellites = function () {
-// 	//returns number of satellites last found
-// 	var buffer = this.cached;
-// 	if ('fix' in buffer) {
-// 		data = buffer['fix'];
-// 		numSat = data.numSat;
-// 		return {numSat: numSat, timestamp: parseFloat(data.timestamp)};
-// 	} else {return 'no satellite data in buffer'}
-// }
 
 // GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
 // 	// takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
