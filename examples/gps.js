@@ -21,3 +21,11 @@ gps.on('connected', function() {
 		console.log (gps.geofence({lat: [42.29, 'N'], lon: [71.27, 'W']}, {lat: [42.30, 'N'], lon: [71.26, 'W']}));
 	});
 });
+
+var led1 = tessel.led(1).output().high();
+var led2 = tessel.led(2).output().low();
+
+setInterval(function () {
+  led1.toggle();
+  led2.toggle();
+}, 100);

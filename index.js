@@ -21,6 +21,7 @@ var GPS = function (hardware) {
 		if (power === 'off') {
 			power = 'on';
 		}
+    console.log(bytes);
 	});
 
 	this.powerOn(function() {
@@ -31,8 +32,10 @@ var GPS = function (hardware) {
 		// All receiving is done over a receive event:
 		self.uart.on('data', function(bytes) {
 			self.emit('data');
-			bytes.forEach(function (line) {
+      var d = '';
+			Array.prototype.forEach.call(bytes, function (line) {
 				var currentChar = String.fromCharCode(parseInt(line));
+        console.log(currentChar);
 				if (currentChar === '$') {
 					self.updateBuffer(incoming);
 					incoming = '$'
