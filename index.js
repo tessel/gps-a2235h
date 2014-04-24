@@ -27,7 +27,7 @@ var GPS = function (hardware, callback) {
 
         this.on('coordinates', function() {
           console.log('Why can\'t I pick it up externally?');
-        })
+        });
 
         setImmediate(function() {
           this.emit('ready');
@@ -38,14 +38,14 @@ var GPS = function (hardware, callback) {
     else {
       setImmediate(function() {
         this.emit('error', err);
-      }.bind(this))
+      }.bind(this));
     }
   }.bind(this));
-}
+};
 
 util.inherits(GPS, EventEmitter);
 
-GPS.prototype.initialPowerSequence = function(callback) {
+GPS.prototype.initialPowerSequence = function (callback) {
 
   var self = this;
   // Tell Tessel to start UART at GPS baud rate
@@ -53,7 +53,7 @@ GPS.prototype.initialPowerSequence = function(callback) {
 
   var noReceiveTimeout;
 
-  function waitForValidData(bytes) {
+  function waitForValidData (bytes) {
     // If the leading byte is the header bit
     // Remove this listener
     self.removeListener('data', waitForValidData);
@@ -72,7 +72,9 @@ GPS.prototype.initialPowerSequence = function(callback) {
     // Clear the timeout 
     clearTimeout(noReceiveTimeout);
     // Call the callback
-    callback && callback(new Error('Unable to connect to module...'));
+    if (callback) {
+      callback(new Error('Unable to connect to module...'));
+    }
   }
 
   /*
@@ -89,10 +91,14 @@ GPS.prototype.initialPowerSequence = function(callback) {
     // Try to turn on
     this.powerOn(function() {
       // If it's still not on
-      if (DEBUG) console.log('state after power cycle:', this.powerState);
+      if (DEBUG) {
+        console.log('state after power cycle:', this.powerState);
+      }
       if (this.powerState === 'off') {
         // Set the timeout once more
-        if (DEBUG) console.log('Trying once more...');
+        if (DEBUG) {
+          console.log('Trying once more...');
+        }
         noReceiveTimeout = setTimeout(function() {
           // If we still didn't get anything, fail the connect
           noDataRecieved();
@@ -100,8 +106,7 @@ GPS.prototype.initialPowerSequence = function(callback) {
       }
     }.bind(this));
   }.bind(this), 1000);
-
-}
+};
 
 // Try to turn the power on.
 // The GPS holds toggle state but we can't sometimes we
@@ -110,19 +115,23 @@ GPS.prototype.powerOn = function (callback) {
   this.power('on', function() {
     setImmediate(function() {
       this.emit('powerOn');
-    }.bind(this))
-    callback && callback();
+    }.bind(this));
+    if (callback) {
+      callback();
+    }
   }.bind(this));
-}
+};
 
 GPS.prototype.powerOff = function (callback) {
   this.power('off', function() {
     setImmediate(function() {
       this.emit('powerOff');
-    }.bind(this))
-    callback && callback();
+    }.bind(this));
+    if (callback) {
+      callback();
+    }
   }.bind(this));
-}
+};
 
 GPS.prototype.power = function(state, callback) {
   // We should switch from this state to passed in state
@@ -131,10 +140,14 @@ GPS.prototype.power = function(state, callback) {
 
   // Pull power high
   if (this.powerState === switchState) {
-    if (DEBUG) console.log('high');
+    if (DEBUG) {
+      console.log('high');
+    }
     self.onOff.output().high();
     setTimeout(function backLow() {
-      if (DEBUG) console.log('low');
+      if (DEBUG) {
+        console.log('low');
+      }
       self.onOff.low();
       // Pull power low
       if (this.powerState === switchState) {
@@ -144,10 +157,10 @@ GPS.prototype.power = function(state, callback) {
     }.bind(this), 250);
 
   }
-  else {
-    callback && callback();
+  else if (callback) {
+    callback();
   }
-}
+};
 
 // Eventually replace this with stream packetizing... sorry Kolker
 GPS.prototype.beginDecoding = function(callback) {
@@ -158,7 +171,9 @@ GPS.prototype.beginDecoding = function(callback) {
   packetizer.packetize();
   // When we get a packet
   packetizer.on('packet', function(packet) {
-    if (DEBUG) console.log('Got packet.');
+    if (DEBUG) {
+      console.log('Got packet.');
+    }
     // Make sure this is a valid packet
     if (packet[0] === '$') {
       // Parse it
@@ -175,8 +190,10 @@ GPS.prototype.beginDecoding = function(callback) {
     }
   }.bind(this));
 
-  callback && callback();
-}
+  if (callback) { 
+    callback();
+  }
+};
 
 GPS.prototype.uartExchange = function (callback) {
   //Configure GPS baud rate to NMEA
@@ -189,29 +206,29 @@ GPS.prototype.uartExchange = function (callback) {
   this.uart = this.hardware.UART({baudrate : 9600});
 
   return callback && callback();
-}
+};
 
 GPS.prototype.setCoordinateFormat = function(format) {
   this.format = format;
   if (format === 'utm') {
     // if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
     console.warn('UTM not currently supported. Voice your outrage to @selkeymoonbeam.');
-    return
+    return;
   } 
   else if (format != 'deg-min-sec' || format != 'deg-dec' || format != 'deg-min-dec') {
     this.format = null;
-    console.warn('Invalid format. Must be 'dig-min-sec', 'deg-dec', or 'deg-min-dec'');
-    return
+    console.warn('Invalid format. Must be \'dig-min-sec\', \'deg-dec\', or \'deg-min-dec\'');
+    return;
   }
   else {
     this.format = format;
   }
-}
+};
 
 GPS.prototype.onFix = function(fix) {
   this.emitNumSatellites(fix);
   this.emitCoordinates(fix);
-}
+};
 
 GPS.prototype.emitNumSatellites = function(fix) {
   if (this.numSats === 0 && fix.numSat > 0) {
@@ -229,7 +246,7 @@ GPS.prototype.emitNumSatellites = function(fix) {
   setImmediate(function() {
     this.emit('numSatellites', fix.numSat);
   }.bind(this));
-}
+};
 
 GPS.prototype.emitCoordinates = function(data) {
   if (this.numSats) {
@@ -270,11 +287,11 @@ GPS.prototype.emitCoordinates = function(data) {
       this.emit('altitude', {alt: alt, timestamp: parseFloat(data.timestamp)});
     }.bind(this));
   }
-}
+};
 
 GPS.prototype.emitAltitude = function(data) {
 
-  if (this.numSas != 0) {
+  if (this.numSas !== 0) {
 
     data.alt = parseInt(data.alt);
 
@@ -282,31 +299,31 @@ GPS.prototype.emitAltitude = function(data) {
       this.emit('altitude', {alt: alt, timestamp: parseFloat(data.timestamp)});
     }.bind(this));
   }
-}
+};
 
 GPS.prototype.getAttribute = function(attribute, callback) {
-  var failTimeout
-    , failHandler
-    , successHandler;
+  var failTimeout;
+  var failHandler;
+  var successHandler;
 
   successHandler = function(attributeData) {
     clearTimeout(failTimeout);
     callback && callback(null, attributeData);
-  }
+  };
 
   failHandler = function() {
     this.removeListener(attribute, successHandler);
     callback && callback(new Error('Timeout Error.'));
-  }
+  };
 
   this.once(attribute, successHandler);
 
   failTimeout = setTimeout(failHandler.bind(this), this.timeoutDuration);
-}
+};
 
 GPS.prototype.getNumSatellites = function(callback) {
   this.getAttribute('numSatellites', callback);
-}
+};
 
 GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
   this.getAttribute('numSatellites', function(err, num) {
@@ -320,14 +337,15 @@ GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
       this.getAttribute(attribute, callback);
     }
   }.bind(this));
-}
+};
+
 GPS.prototype.getCoordinates = function (callback) {
   this.getNumSatDependentAttribute('coordinates', callback);
-}
+};
 
 GPS.prototype.getAltitude = function (callback) {
   this.getNumSatDependentAttribute('altitude', callback);
-}
+};
 
 // GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
 // 	// takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
@@ -370,7 +388,7 @@ GPS.prototype.getAltitude = function (callback) {
 
 var connect = function(hardware) {
 	return new GPS(hardware);
-}
+};
 
 module.exports.connect = connect;
 module.exports.GPS = GPS;
