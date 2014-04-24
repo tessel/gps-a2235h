@@ -251,40 +251,42 @@ GPS.prototype.emitNumSatellites = function(fix) {
 GPS.prototype.emitCoordinates = function(data) {
   if (this.numSats) {
 
-    var latPole = data['latPole'];
-    var lonPole = data['lonPole'];
-    var lat = data['lat'];
-    var lon = data['lon'];
+    var latPole = data.latPole;
+    var lonPole = data.lonPole;
+    var lat = data.lat;
+    var lon = data.lon;
     var dec = lat.indexOf('.');
-    latDeg = parseFloat(lat.slice(0,dec-2));
-    latMin = parseFloat(lat.slice(dec-2, lat.length));
+    var latDeg = parseFloat(lat.slice(0,dec-2));
+    var latMin = parseFloat(lat.slice(dec-2, lat.length));
     var dec = lon.indexOf('.');
-    lonDeg = parseFloat(lon.slice(0,dec-2));
-    lonMin = parseFloat(lon.slice(dec-2, lon.length));
+    var lonDeg = parseFloat(lon.slice(0,dec-2));
+    var lonMin = parseFloat(lon.slice(dec-2, lon.length));
+    var longitude;
+    var latitude;
 
     if (this.format === 'deg-min-sec') {
-        latSec = parseFloat(latMin.toString().split('.')[1] * .6);
-        latMin = parseInt(latMin.toString().split('.')[0]);
+      latSec = parseFloat(latMin.toString().split('.')[1] * .6);
+      latMin = parseInt(latMin.toString().split('.')[0]);
 
-        lonSec = parseFloat(lonMin.toString().split('.')[1] * .6);
-        lonMin = parseInt(lonMin.toString().split('.')[0]);
+      lonSec = parseFloat(lonMin.toString().split('.')[1] * .6);
+      lonMin = parseInt(lonMin.toString().split('.')[0]);
 
-        latitude = [latDeg, latMin, latSec, latPole];
-        longitude = [lonDeg, lonMin, lonSec, lonPole];
+      latitude = [latDeg, latMin, latSec, latPole];
+      longitude = [lonDeg, lonMin, lonSec, lonPole];
     } else if (this.format === 'deg-dec') {
-        lat = latDeg + (latMin / 60);
-        lon = lonDeg + (lonMin / 60);
+      lat = latDeg + (latMin / 60);
+      lon = lonDeg + (lonMin / 60);
 
-        latitude = [lat, latPole];
-        longitude = [lon, lonPole];
+      latitude = [lat, latPole];
+      longitude = [lon, lonPole];
     } else {
-        latitude = [latDeg, latMin, latPole];
-        longitude = [lonDeg, lonMin, lonPole];
+      latitude = [latDeg, latMin, latPole];
+      longitude = [lonDeg, lonMin, lonPole];
     }
-    coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(data.timestamp)}
+    var coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(data.timestamp)};
 
     setImmediate(function() {
-      this.emit('altitude', {alt: alt, timestamp: parseFloat(data.timestamp)});
+      this.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
     }.bind(this));
   }
 };
