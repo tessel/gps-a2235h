@@ -26,7 +26,7 @@ var GPS = function (hardware, callback) {
         this.on('fix', this.onFix.bind(this));
 
         this.on('coordinates', function() {
-          console.log("Why can't I pick it up externally?");
+          console.log('Why can\'t I pick it up externally?');
         })
 
         setImmediate(function() {
@@ -72,7 +72,7 @@ GPS.prototype.initialPowerSequence = function(callback) {
     // Clear the timeout 
     clearTimeout(noReceiveTimeout);
     // Call the callback
-    callback && callback(new Error("Unable to connect to module..."));
+    callback && callback(new Error('Unable to connect to module...'));
   }
 
   /*
@@ -89,10 +89,10 @@ GPS.prototype.initialPowerSequence = function(callback) {
     // Try to turn on
     this.powerOn(function() {
       // If it's still not on
-      if (DEBUG) console.log("state after power cycle:", this.powerState);
+      if (DEBUG) console.log('state after power cycle:', this.powerState);
       if (this.powerState === 'off') {
         // Set the timeout once more
-        if (DEBUG) console.log("Trying once more...");
+        if (DEBUG) console.log('Trying once more...');
         noReceiveTimeout = setTimeout(function() {
           // If we still didn't get anything, fail the connect
           noDataRecieved();
@@ -131,10 +131,10 @@ GPS.prototype.power = function(state, callback) {
 
   // Pull power high
   if (this.powerState === switchState) {
-    if (DEBUG) console.log("high");
+    if (DEBUG) console.log('high');
     self.onOff.output().high();
     setTimeout(function backLow() {
-      if (DEBUG) console.log("low");
+      if (DEBUG) console.log('low');
       self.onOff.low();
       // Pull power low
       if (this.powerState === switchState) {
@@ -158,13 +158,13 @@ GPS.prototype.beginDecoding = function(callback) {
   packetizer.packetize();
   // When we get a packet
   packetizer.on('packet', function(packet) {
-    if (DEBUG) console.log("Got packet.");
+    if (DEBUG) console.log('Got packet.');
     // Make sure this is a valid packet
     if (packet[0] === '$') {
       // Parse it
       var datum = nmea.parse(packet);
 
-      if (DEBUG) { console.log("Got Data: ", datum);}
+      if (DEBUG) { console.log('Got Data: ', datum);}
       // If sucessful
       if (datum) {
         setImmediate(function() {
@@ -200,7 +200,7 @@ GPS.prototype.setCoordinateFormat = function(format) {
   } 
   else if (format != 'deg-min-sec' || format != 'deg-dec' || format != 'deg-min-dec') {
     this.format = null;
-    console.warn("Invalid format. Must be 'dig-min-sec', 'deg-dec', or 'deg-min-dec'");
+    console.warn('Invalid format. Must be 'dig-min-sec', 'deg-dec', or 'deg-min-dec'');
     return
   }
   else {
@@ -296,7 +296,7 @@ GPS.prototype.getAttribute = function(attribute, callback) {
 
   failHandler = function() {
     this.removeListener(attribute, successHandler);
-    callback && callback(new Error("Timeout Error."));
+    callback && callback(new Error('Timeout Error.'));
   }
 
   this.once(attribute, successHandler);
@@ -314,7 +314,7 @@ GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
       return callback && callback(err);
     }
     else if (num === 0) {
-      return callback && callback(new Error("No Satellites available."));
+      return callback && callback(new Error('No Satellites available.'));
     }
     else {
       this.getAttribute(attribute, callback);
