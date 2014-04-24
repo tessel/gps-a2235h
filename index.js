@@ -296,7 +296,7 @@ GPS.prototype.emitAltitude = function(data) {
     data.alt = parseInt(data.alt);
 
     setImmediate(function() {
-      this.emit('altitude', {alt: alt, timestamp: parseFloat(data.timestamp)});
+      this.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
     }.bind(this));
   }
 };
@@ -308,12 +308,16 @@ GPS.prototype.getAttribute = function(attribute, callback) {
 
   successHandler = function(attributeData) {
     clearTimeout(failTimeout);
-    callback && callback(null, attributeData);
+    if (callback) {
+      callback(null, attributeData);
+    }
   };
 
   failHandler = function() {
     this.removeListener(attribute, successHandler);
-    callback && callback(new Error('Timeout Error.'));
+    if (callback) {
+      callback(new Error('Timeout Error.'));
+    }
   };
 
   this.once(attribute, successHandler);
