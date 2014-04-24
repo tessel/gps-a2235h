@@ -174,14 +174,21 @@ GPS.prototype.beginDecoding = function(callback) {
   // When we get a packet
   packetizer.on('packet', function(packet) {
     if (DEBUG) {
-      console.log('Got packet.');
+      // console.log('Got packet.');
+      console.log('  Packet\t', packet);
     }
     // Make sure this is a valid packet
     if (packet[0] === '$') {
       // Parse it
       var datum = nmea.parse(packet);
 
-      if (DEBUG) { console.log('Got Data: ', datum);}
+      if (DEBUG) { 
+        console.log('    Got Data:');
+        Object.keys(datum).forEach(function (key) {
+          console.log('     ', key, '\n       ', datum[key]);
+          });
+        console.log();
+      }
       // If sucessful
       if (datum) {
         setImmediate(function() {
