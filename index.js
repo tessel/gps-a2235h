@@ -1,4 +1,4 @@
-var tessel = require('tessel');
+// var tessel = require('tessel');
 
 var util = require('util');
 var EventEmitter = require('events').EventEmitter;
@@ -55,10 +55,10 @@ GPS.prototype.initialPowerSequence = function (callback) {
 
   var noReceiveTimeout;
 
-  function waitForValidData (bytes) {
+  function waitForData () {
     // If the leading byte is the header bit
     // Remove this listener
-    self.removeListener('data', waitForValidData);
+    self.removeListener('data', waitForData);
 
     clearTimeout(noReceiveTimeout);
 
@@ -70,7 +70,7 @@ GPS.prototype.initialPowerSequence = function (callback) {
 
   function noDataRecieved() {
     // Remove the listener for any data
-    self.removeListener('data', waitForValidData);
+    self.removeListener('data', waitForData);
     // Clear the timeout 
     clearTimeout(noReceiveTimeout);
     // Call the callback
@@ -86,7 +86,7 @@ GPS.prototype.initialPowerSequence = function (callback) {
   */
 
   // This event listener will wait for valid data to note that we are on
-  this.uart.once('data', waitForValidData);
+  this.uart.once('data', waitForData);
 
   // Set the timeout to try to turn on if not already
   noReceiveTimeout = setTimeout(function alreadyOn() {
