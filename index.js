@@ -31,8 +31,10 @@ var GPS = function (hardware, callback) {
 
         setImmediate(function() {
           this.emit('ready');
+          if (callback) {
+            callback();
+          }
         }.bind(this));
-
       }.bind(this));
     }
     else {
@@ -258,17 +260,19 @@ GPS.prototype.emitCoordinates = function(data) {
     var dec = lat.indexOf('.');
     var latDeg = parseFloat(lat.slice(0,dec-2));
     var latMin = parseFloat(lat.slice(dec-2, lat.length));
-    var dec = lon.indexOf('.');
+    dec = lon.indexOf('.');
     var lonDeg = parseFloat(lon.slice(0,dec-2));
     var lonMin = parseFloat(lon.slice(dec-2, lon.length));
     var longitude;
     var latitude;
+    var latSec;
+    var lonSec;
 
     if (this.format === 'deg-min-sec') {
-      latSec = parseFloat(latMin.toString().split('.')[1] * .6);
+      latSec = parseFloat(latMin.toString().split('.')[1] * 0.6);
       latMin = parseInt(latMin.toString().split('.')[0]);
 
-      lonSec = parseFloat(lonMin.toString().split('.')[1] * .6);
+      lonSec = parseFloat(lonMin.toString().split('.')[1] * 0.6);
       lonMin = parseInt(lonMin.toString().split('.')[0]);
 
       latitude = [latDeg, latMin, latSec, latPole];
@@ -287,6 +291,7 @@ GPS.prototype.emitCoordinates = function(data) {
 
     setImmediate(function() {
       this.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
+      this.emit('coordinates', coordinates);
     }.bind(this));
   }
 };
