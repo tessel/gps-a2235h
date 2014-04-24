@@ -8,6 +8,16 @@ var Packetizer = require('./lib/packetizer');
 var DEBUG = true;
 
 var GPS = function (hardware, callback) {
+  /*
+  Constructor
+
+  Args
+    hardware
+      The Tessel port to use
+    callback
+      Callback function
+  */
+  var self = this;
   //set this.types for each type
   //type: fix, nav-info, 2waypoint, autopilot-b
   this.hardware = hardware;
@@ -18,31 +28,31 @@ var GPS = function (hardware, callback) {
   this.numSats = 0;
 
   // Turn the module on
-  this.initialPowerSequence(function(err) {
+  self.initialPowerSequence(function(err) {
     if (!err) {
       // Once we are on, emit the connected event
-      this.beginDecoding(function() {
+      self.beginDecoding(function() {
 
-        this.on('fix', this.onFix.bind(this));
+        self.on('fix', self.onFix);
 
-        this.on('coordinates', function() {
+        self.on('coordinates', function() {
           console.log('Why can\'t I pick it up externally?');
         });
 
         setImmediate(function() {
-          this.emit('ready');
+          self.emit('ready');
           if (callback) {
             callback();
           }
-        }.bind(this));
-      }.bind(this));
+        });
+      });
     }
     else {
       setImmediate(function() {
-        this.emit('error', err);
-      }.bind(this));
+        self.emit('error', err);
+      });
     }
-  }.bind(this));
+  });
 };
 
 util.inherits(GPS, EventEmitter);
@@ -86,17 +96,17 @@ GPS.prototype.initialPowerSequence = function (callback) {
   */
 
   // This event listener will wait for valid data to note that we are on
-  this.uart.once('data', waitForData);
+  self.uart.once('data', waitForData);
 
   // Set the timeout to try to turn on if not already
   noReceiveTimeout = setTimeout(function alreadyOn() {
     // Try to turn on
-    this.powerOn(function() {
+    self.powerOn(function() {
       // If it's still not on
       if (DEBUG) {
-        console.log('state after power cycle:', this.powerState);
+        console.log('state after power cycle:', self.powerState);
       }
-      if (this.powerState === 'off') {
+      if (self.powerState === 'off') {
         // Set the timeout once more
         if (DEBUG) {
           console.log('Trying once more...');
@@ -106,33 +116,35 @@ GPS.prototype.initialPowerSequence = function (callback) {
           noDataRecieved();
         }, 1000);
       }
-    }.bind(this));
-  }.bind(this), 1000);
+    });
+  }, 1000);
 };
 
 // Try to turn the power on.
 // The GPS holds toggle state but we can't sometimes we
 // may have to toggle power twice. 
 GPS.prototype.powerOn = function (callback) {
-  this.power('on', function() {
+  var self = this;
+  self.power('on', function() {
     setImmediate(function() {
-      this.emit('powerOn');
-    }.bind(this));
+      self.emit('powerOn');
+    });
     if (callback) {
       callback();
     }
-  }.bind(this));
+  });
 };
 
 GPS.prototype.powerOff = function (callback) {
-  this.power('off', function() {
+  var self = this;
+  self.power('off', function() {
     setImmediate(function() {
-      this.emit('powerOff');
-    }.bind(this));
+      self.emit('powerOff');
+    });
     if (callback) {
       callback();
     }
-  }.bind(this));
+  });
 };
 
 GPS.prototype.power = function(state, callback) {
@@ -141,7 +153,7 @@ GPS.prototype.power = function(state, callback) {
   var self = this;
 
   // Pull power high
-  if (this.powerState === switchState) {
+  if (self.powerState === switchState) {
     if (DEBUG) {
       console.log('high');
     }
@@ -152,11 +164,11 @@ GPS.prototype.power = function(state, callback) {
       }
       self.onOff.low();
       // Pull power low
-      if (this.powerState === switchState) {
+      if (self.powerState === switchState) {
         // Set a timeout for it to have time to turn on and start sending
         setTimeout(callback, 500);
       }
-    }.bind(this), 250);
+    }, 250);
 
   }
   else if (callback) {
@@ -167,6 +179,7 @@ GPS.prototype.power = function(state, callback) {
 // Eventually replace this with stream packetizing... sorry Kolker
 GPS.prototype.beginDecoding = function(callback) {
 
+  var self = this;
   // Initializer our packetizer
   var packetizer = new Packetizer(this.uart);
   // Tell it to start packetizing
@@ -193,11 +206,11 @@ GPS.prototype.beginDecoding = function(callback) {
       if (datum) {
         setImmediate(function() {
           // Emit the type of packet
-          this.emit(datum.type, datum);
-        }.bind(this));
+          self.emit(datum.type, datum);
+        });
       }
     }
-  }.bind(this));
+  });
 
   if (callback) { 
     callback();
@@ -240,26 +253,27 @@ GPS.prototype.onFix = function(fix) {
 };
 
 GPS.prototype.emitNumSatellites = function(fix) {
-  if (this.numSats === 0 && fix.numSat > 0) {
+  var self = this;
+  if (self.numSats === 0 && fix.numSat > 0) {
     setImmediate(function() {
-      this.emit('connected', fix.numSat);
-    }.bind(this));
+      self.emit('connected', fix.numSat);
+    });
   }
-  else if (this.numSats > 0 && fix.numSat === 0) {
+  else if (self.numSats > 0 && fix.numSat === 0) {
     setImmediate(function() {
-      this.emit('disconnected', fix.numSat);
-    }.bind(this));
+      self.emit('disconnected', fix.numSat);
+    });
   }
-  this.numSats = fix.numSat;
+  self.numSats = fix.numSat;
 
   setImmediate(function() {
-    this.emit('numSatellites', fix.numSat);
-  }.bind(this));
+    self.emit('numSatellites', fix.numSat);
+  });
 };
 
 GPS.prototype.emitCoordinates = function(data) {
-  if (this.numSats) {
-
+  var self = this;
+  if (self.numSats) {
     var latPole = data.latPole;
     var lonPole = data.lonPole;
     var lat = data.lat;
@@ -275,7 +289,7 @@ GPS.prototype.emitCoordinates = function(data) {
     var latSec;
     var lonSec;
 
-    if (this.format === 'deg-min-sec') {
+    if (self.format === 'deg-min-sec') {
       latSec = parseFloat(latMin.toString().split('.')[1] * 0.6);
       latMin = parseInt(latMin.toString().split('.')[0]);
 
@@ -284,7 +298,7 @@ GPS.prototype.emitCoordinates = function(data) {
 
       latitude = [latDeg, latMin, latSec, latPole];
       longitude = [lonDeg, lonMin, lonSec, lonPole];
-    } else if (this.format === 'deg-dec') {
+    } else if (self.format === 'deg-dec') {
       lat = latDeg + (latMin / 60);
       lon = lonDeg + (lonMin / 60);
 
@@ -297,25 +311,26 @@ GPS.prototype.emitCoordinates = function(data) {
     var coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(data.timestamp)};
 
     setImmediate(function() {
-      this.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
-      this.emit('coordinates', coordinates);
-    }.bind(this));
+      self.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
+      self.emit('coordinates', coordinates);
+    });
   }
 };
 
 GPS.prototype.emitAltitude = function(data) {
-
-  if (this.numSas !== 0) {
+  var self = this;
+  if (self.numSas !== 0) {
 
     data.alt = parseInt(data.alt);
 
     setImmediate(function() {
-      this.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
-    }.bind(this));
+      self.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
+    });
   }
 };
 
 GPS.prototype.getAttribute = function(attribute, callback) {
+  var self = this;
   var failTimeout;
   var failHandler;
   var successHandler;
@@ -328,15 +343,15 @@ GPS.prototype.getAttribute = function(attribute, callback) {
   };
 
   failHandler = function() {
-    this.removeListener(attribute, successHandler);
+    self.removeListener(attribute, successHandler);
     if (callback) {
       callback(new Error('Timeout Error.'));
     }
   };
 
-  this.once(attribute, successHandler);
+  self.once(attribute, successHandler);
 
-  failTimeout = setTimeout(failHandler.bind(this), this.timeoutDuration);
+  failTimeout = setTimeout(failHandler, self.timeoutDuration);
 };
 
 GPS.prototype.getNumSatellites = function(callback) {
@@ -344,7 +359,8 @@ GPS.prototype.getNumSatellites = function(callback) {
 };
 
 GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
-  this.getAttribute('numSatellites', function(err, num) {
+  var self = this;
+  self.getAttribute('numSatellites', function(err, num) {
     if (err) {
       return callback && callback(err);
     }
@@ -352,9 +368,9 @@ GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
       return callback && callback(new Error('No Satellites available.'));
     }
     else {
-      this.getAttribute(attribute, callback);
+      self.getAttribute(attribute, callback);
     }
-  }.bind(this));
+  });
 };
 
 GPS.prototype.getCoordinates = function (callback) {
