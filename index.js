@@ -46,8 +46,7 @@ var GPS = function (hardware, callback) {
           }
         });
       });
-    }
-    else {
+    } else {
       setImmediate(function() {
         self.emit('error', err);
       });
@@ -169,9 +168,7 @@ GPS.prototype.power = function(state, callback) {
         setTimeout(callback, 500);
       }
     }, 250);
-
-  }
-  else if (callback) {
+  } else if (callback) {
     callback();
   }
 };
@@ -236,12 +233,10 @@ GPS.prototype.setCoordinateFormat = function(format) {
   if (format === 'utm') {
     // if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
     console.warn('UTM not currently supported. Voice your outrage to @selkeymoonbeam.');
-  } 
-  else if (format != 'deg-min-sec' || format != 'deg-dec' || format != 'deg-min-dec') {
+  } else if (format != 'deg-min-sec' || format != 'deg-dec' || format != 'deg-min-dec') {
     this.format = null;
     console.warn('Invalid format. Must be \'dig-min-sec\', \'deg-dec\', or \'deg-min-dec\'');
-  }
-  else {
+  } else {
     this.format = format;
   }
 };
@@ -257,8 +252,7 @@ GPS.prototype.emitNumSatellites = function(fix) {
     setImmediate(function() {
       self.emit('connected', fix.numSat);
     });
-  }
-  else if (self.numSats > 0 && fix.numSat === 0) {
+  } else if (self.numSats > 0 && fix.numSat === 0) {
     setImmediate(function() {
       self.emit('disconnected', fix.numSat);
     });
@@ -362,11 +356,9 @@ GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
   self.getAttribute('numSatellites', function(err, num) {
     if (err) {
       return callback && callback(err);
-    }
-    else if (num === 0) {
+    } else if (num === 0) {
       return callback && callback(new Error('No Satellites available.'));
-    }
-    else {
+    } else {
       self.getAttribute(attribute, callback);
     }
   });
