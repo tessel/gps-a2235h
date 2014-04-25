@@ -23,5 +23,5 @@ gps.on('connected', function() {
 });
 
 setInterval(function() {
-
+  //  Stay alive
 }, 20000);
