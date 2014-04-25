@@ -187,7 +187,6 @@ GPS.prototype.beginDecoding = function(callback) {
   // When we get a packet
   packetizer.on('packet', function(packet) {
     if (DEBUG) {
-      // console.log('Got packet.');
       console.log('  Packet\t', packet);
     }
     // Make sure this is a valid packet
@@ -227,7 +226,9 @@ GPS.prototype.uartExchange = function (callback) {
   //Reset baud rate to talk to Tessel
   this.uart = this.hardware.UART({baudrate : 9600});
 
-  return callback && callback();
+  if (callback) {
+    callback();
+  }
 };
 
 GPS.prototype.setCoordinateFormat = function(format) {
@@ -235,12 +236,10 @@ GPS.prototype.setCoordinateFormat = function(format) {
   if (format === 'utm') {
     // if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
     console.warn('UTM not currently supported. Voice your outrage to @selkeymoonbeam.');
-    return;
   } 
   else if (format != 'deg-min-sec' || format != 'deg-dec' || format != 'deg-min-dec') {
     this.format = null;
     console.warn('Invalid format. Must be \'dig-min-sec\', \'deg-dec\', or \'deg-min-dec\'');
-    return;
   }
   else {
     this.format = format;
@@ -279,10 +278,10 @@ GPS.prototype.emitCoordinates = function(data) {
     var lat = data.lat;
     var lon = data.lon;
     var dec = lat.indexOf('.');
-    var latDeg = parseFloat(lat.slice(0,dec-2));
+    var latDeg = parseFloat(lat.slice(0, dec-2));
     var latMin = parseFloat(lat.slice(dec-2, lat.length));
     dec = lon.indexOf('.');
-    var lonDeg = parseFloat(lon.slice(0,dec-2));
+    var lonDeg = parseFloat(lon.slice(0, dec-2));
     var lonMin = parseFloat(lon.slice(dec-2, lon.length));
     var longitude;
     var latitude;
