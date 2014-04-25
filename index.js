@@ -3,7 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 var Packetizer = require('./lib/packetizer');
 
-var DEBUG = true;
+var DEBUG = false;  //  Set to true for debug console logs
 
 var GPS = function (hardware, callback) {
   /*
