@@ -57,27 +57,33 @@ var GPS = function (hardware, callback) {
 util.inherits(GPS, EventEmitter);
 
 GPS.prototype.initialPowerSequence = function (callback) {
+  /*
+  Turn on and establish contact with the A2235-H GPS module 
 
+  Arg
+    callback
+      Callback function; arg: err
+  */
   var self = this;
-  // Tell Tessel to start UART at GPS baud rate
+  //  Tell Tessel to start UART at GPS baud rate
   this.uart = this.hardware.UART({baudrate : 115200});
 
   var noReceiveTimeout;
 
   function waitForData () {
-    // If the leading byte is the header bit
-    // Remove this listener
+    //  Remove this listener when we hear something (anything) from the GPS
     self.removeListener('data', waitForData);
 
     clearTimeout(noReceiveTimeout);
 
-    // And note that we are on
+    //  And note that we are on
     self.powerState = 'on';
 
+    //  Tell the A2235-H that we want it to give us NMEA strings over UART
     self.uartExchange(callback);
   }
 
-  function noDataRecieved() {
+  function noDataRecieved () {
     // Remove the listener for any data
     self.removeListener('data', waitForData);
     // Clear the timeout 
@@ -95,7 +101,9 @@ GPS.prototype.initialPowerSequence = function (callback) {
   */
 
   // This event listener will wait for valid data to note that we are on
-  self.uart.once('data', waitForData);
+  self.uart.once('data', function(data) {
+    waitForData(data);
+  });
 
   // Set the timeout to try to turn on if not already
   noReceiveTimeout = setTimeout(function alreadyOn() {
@@ -119,10 +127,15 @@ GPS.prototype.initialPowerSequence = function (callback) {
   }, 1000);
 };
 
-// Try to turn the power on.
-// The GPS holds toggle state but we can't sometimes we
-// may have to toggle power twice. 
 GPS.prototype.powerOn = function (callback) {
+  /*
+  Try to turn the power on. Note that the A2235-H responds to a pulse, not the
+  state of the power pin (it toggles).
+
+  Arg
+    callback
+      Callback function; arg: err
+  */
   var self = this;
   self.power('on', function() {
     setImmediate(function() {
@@ -135,6 +148,14 @@ GPS.prototype.powerOn = function (callback) {
 };
 
 GPS.prototype.powerOff = function (callback) {
+  /*
+  Try to turn the power off. Note that the A2235-H responds to a pulse, not the
+  state of the power pin (it toggles).
+
+  Arg
+    callback
+      Callback function; arg: err
+  */
   var self = this;
   self.power('off', function() {
     setImmediate(function() {
@@ -147,7 +168,18 @@ GPS.prototype.powerOff = function (callback) {
 };
 
 GPS.prototype.power = function(state, callback) {
-  // We should switch from this state to passed in state
+  /*
+  Toggle the power pin of the A2235-H (attached to hardware.gpio[3]). Assumes
+  the module knows what power state it is in.
+
+  Args
+    state
+      'on' - turn the power on
+      'off' - turn the power off
+    callback
+      Callback function
+  */
+  // We need to switch from this state to the given state
   var switchState = (state === 'on' ? 'off' : 'on');
   var self = this;
 
@@ -173,10 +205,17 @@ GPS.prototype.power = function(state, callback) {
   }
 };
 
-// Eventually replace this with stream packetizing... sorry Kolker
 GPS.prototype.beginDecoding = function(callback) {
+  /*
+  After making contact with the A2235-H, start decoging its NMEA messages to
+  get information from the GPS satellites
 
+  Arg
+    callback
+      Callback function
+  */
   var self = this;
+  // Eventually replace this with stream packetizing... sorry Kolker
   // Initializer our packetizer
   var packetizer = new Packetizer(this.uart);
   // Tell it to start packetizing
@@ -191,14 +230,14 @@ GPS.prototype.beginDecoding = function(callback) {
       // Parse it
       var datum = nmea.parse(packet);
 
-      if (DEBUG) { 
+      if (DEBUG) {  //  pretty print
         console.log('    Got Data:');
         Object.keys(datum).forEach(function (key) {
           console.log('     ', key, '\n       ', datum[key]);
           });
         console.log();
       }
-      // If sucessful
+      // If sucessful, emit the parsed NMEA object by its type
       if (datum) {
         setImmediate(function() {
           // Emit the type of packet
@@ -214,13 +253,21 @@ GPS.prototype.beginDecoding = function(callback) {
 };
 
 GPS.prototype.uartExchange = function (callback) {
-  //Configure GPS baud rate to NMEA
+  /*
+  The A2235-H has been configured in hardware to use UART, but we need to send 
+  it this command so that it gives us NMEA messages as opposed to SiRF binary.
+
+  Arg
+    callback
+      Callback function
+  */
+  //Configure GPS baud rate to 9600, talk in NMEA 
   var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
 
   // Write the message
   this.uart.write(characters);
 
-  //Reset baud rate to talk to Tessel
+  // Reset UART baud rate
   this.uart = this.hardware.UART({baudrate : 9600});
 
   if (callback) {
@@ -229,6 +276,17 @@ GPS.prototype.uartExchange = function (callback) {
 };
 
 GPS.prototype.setCoordinateFormat = function(format) {
+  /*
+  Configure how the module reports latitude and longitude
+
+  Arg
+    format
+      'deg-min-sec' - Degrees + minutes + seconds
+      'deg-dec' - Degrees and fractions thereof, as a decimal
+      'deg-min-dec' - Degrees + minutes and fractions thereof, as a decimal
+      'utm' - Report coordinates in the  Universal Transverse Mercator
+        coordinate system. Not currently supported.
+  */  
   this.format = format;
   if (format === 'utm') {
     // if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
@@ -242,11 +300,26 @@ GPS.prototype.setCoordinateFormat = function(format) {
 };
 
 GPS.prototype.onFix = function(fix) {
+  /*
+  Called when we get a NMEA message which indicates that the GPS has a 3D fix 
+  on its position.
+
+  Arg
+    fix
+      The output of nmea.parse(): an object containing the parsed NEMA message
+  */
   this.emitNumSatellites(fix);
   this.emitCoordinates(fix);
 };
 
 GPS.prototype.emitNumSatellites = function(fix) {
+  /*
+  List the satellites the module can see
+
+  Arg
+    fix
+      The output of nmea.parse(): an object containing the parsed NEMA message
+  */
   var self = this;
   if (self.numSats === 0 && fix.numSat > 0) {
     setImmediate(function() {
@@ -264,13 +337,20 @@ GPS.prototype.emitNumSatellites = function(fix) {
   });
 };
 
-GPS.prototype.emitCoordinates = function(data) {
+GPS.prototype.emitCoordinates = function(fix) {
+  /*
+  Format and emit the coordinates in fix
+  
+  Arg
+    fix
+      The output of nmea.parse(): an object containing the parsed NEMA message
+  */
   var self = this;
   if (self.numSats) {
-    var latPole = data.latPole;
-    var lonPole = data.lonPole;
-    var lat = data.lat;
-    var lon = data.lon;
+    var latPole = fix.latPole;
+    var lonPole = fix.lonPole;
+    var lat = fix.lat;
+    var lon = fix.lon;
     var dec = lat.indexOf('.');
     var latDeg = parseFloat(lat.slice(0, dec-2));
     var latMin = parseFloat(lat.slice(dec-2, lat.length));
@@ -301,28 +381,47 @@ GPS.prototype.emitCoordinates = function(data) {
       latitude = [latDeg, latMin, latPole];
       longitude = [lonDeg, lonMin, lonPole];
     }
-    var coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(data.timestamp)};
+    var coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(fix.timestamp)};
 
     setImmediate(function() {
-      self.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
+      self.emit('altitude', {alt: fix.alt, timestamp: parseFloat(fix.timestamp)});
       self.emit('coordinates', coordinates);
     });
   }
 };
 
-GPS.prototype.emitAltitude = function(data) {
+GPS.prototype.emitAltitude = function(fix) {
+  /*
+  Emit the altitude in the given fix
+
+  Arg
+    fix
+      The output of nmea.parse(): an object containing the parsed NEMA message
+  */
   var self = this;
   if (self.numSas !== 0) {
 
-    data.alt = parseInt(data.alt);
+    fix.alt = parseInt(fix.alt);
 
     setImmediate(function() {
-      self.emit('altitude', {alt: data.alt, timestamp: parseFloat(data.timestamp)});
+      self.emit('altitude', {alt: fix.alt, timestamp: parseFloat(fix.timestamp)});
     });
   }
 };
 
 GPS.prototype.getAttribute = function(attribute, callback) {
+  /*
+  Extract a specific attribute from incoming NMEA data and call the given 
+  callback with the value
+
+  Args
+    attribute
+      The key for a value in the parsed NMEA object. See documentation for the 
+        nmea module on npm for a complete list of attributes:
+        https://www.npmjs.org/package/nmea
+    callback
+      Callback function to call for the data in the specific attribute
+  */
   var self = this;
   var failTimeout;
   var failHandler;
@@ -348,16 +447,31 @@ GPS.prototype.getAttribute = function(attribute, callback) {
 };
 
 GPS.prototype.getNumSatellites = function(callback) {
+  //  Pass the number of visible satellites to the callback.
   this.getAttribute('numSatellites', callback);
 };
 
 GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
+  /*
+  Check to see if satellites are visible and call the callback if they are
+
+  Args
+    attribute
+      The attribute to act on if satellites are visible
+    callback
+      Callback function to call with the given attribute if satellites are 
+      visible. Args: err, attributeData
+  */
   var self = this;
   self.getAttribute('numSatellites', function(err, num) {
     if (err) {
-      return callback && callback(err);
+      if (callback) {
+       callback(err);
+      }
     } else if (num === 0) {
-      return callback && callback(new Error('No Satellites available.'));
+      if (callback) {
+        callback(new Error('No Satellites available.'), 0);
+      }
     } else {
       self.getAttribute(attribute, callback);
     }
@@ -365,10 +479,12 @@ GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
 };
 
 GPS.prototype.getCoordinates = function (callback) {
+  //  Pass the coordinates to the callback
   this.getNumSatDependentAttribute('coordinates', callback);
 };
 
 GPS.prototype.getAltitude = function (callback) {
+  //  Pass the altitude to the callback
   this.getNumSatDependentAttribute('altitude', callback);
 };
 
