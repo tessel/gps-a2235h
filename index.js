@@ -297,58 +297,58 @@ GPS.prototype.setCoordinateFormat = function (format) {
   }
 };
 
-GPS.prototype.onFix = function (fix) {
+GPS.prototype.onFix = function (parsed) {
   /*
   Called when we get a NMEA message which indicates that the GPS has a 3D fix 
   on its position.
 
   Arg
-    fix
+    parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
-  this.emitNumSatellites(fix);
-  this.emitCoordinates(fix);
+  this.emitNumSatellites(parsed);
+  this.emitCoordinates(parsed);
 };
 
-GPS.prototype.emitNumSatellites = function (fix) {
+GPS.prototype.emitNumSatellites = function (parsed) {
   /*
   List the satellites the module can see
 
   Arg
-    fix
+    parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (self.numSats === 0 && fix.numSat > 0) {
+  if (self.numSats === 0 && parsed.numSat > 0) {
     setImmediate(function () {
-      self.emit('connected', fix.numSat);
+      self.emit('connected', parsed.numSat);
     });
-  } else if (self.numSats > 0 && fix.numSat === 0) {
+  } else if (self.numSats > 0 && parsed.numSat === 0) {
     setImmediate(function () {
-      self.emit('disconnected', fix.numSat);
+      self.emit('disconnected', parsed.numSat);
     });
   }
-  self.numSats = fix.numSat;
+  self.numSats = parsed.numSat;
 
   setImmediate(function () {
-    self.emit('numSatellites', fix.numSat);
+    self.emit('numSatellites', parsed.numSat);
   });
 };
 
-GPS.prototype.emitCoordinates = function (fix) {
+GPS.prototype.emitCoordinates = function (parsed) {
   /*
-  Format and emit the coordinates in fix
+  Format and emit the coordinates in parsed
   
   Arg
-    fix
+    parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
   if (self.numSats) {
-    var latPole = fix.latPole;
-    var lonPole = fix.lonPole;
-    var lat = fix.lat;
-    var lon = fix.lon;
+    var latPole = parsed.latPole;
+    var lonPole = parsed.lonPole;
+    var lat = parsed.lat;
+    var lon = parsed.lon;
     var dec = lat.indexOf('.');
     var latDeg = parseFloat(lat.slice(0, dec-2));
     var latMin = parseFloat(lat.slice(dec-2, lat.length));
@@ -379,30 +379,30 @@ GPS.prototype.emitCoordinates = function (fix) {
       latitude = [latDeg, latMin, latPole];
       longitude = [lonDeg, lonMin, lonPole];
     }
-    var coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(fix.timestamp)};
+    var coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(parsed.timestamp)};
 
     setImmediate(function () {
-      self.emit('altitude', {alt: fix.alt, timestamp: parseFloat(fix.timestamp)});
+      self.emit('altitude', {alt: parsed.alt, timestamp: parseFloat(parsed.timestamp)});
       self.emit('coordinates', coordinates);
     });
   }
 };
 
-GPS.prototype.emitAltitude = function (fix) {
+GPS.prototype.emitAltitude = function (parsed) {
   /*
-  Emit the altitude in the given fix
+  Emit the altitude in the given parsed
 
   Arg
-    fix
+    parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
   if (self.numSas !== 0) {
 
-    fix.alt = parseInt(fix.alt);
+    parsed.alt = parseInt(parsed.alt);
 
     setImmediate(function () {
-      self.emit('altitude', {alt: fix.alt, timestamp: parseFloat(fix.timestamp)});
+      self.emit('altitude', {alt: parsed.alt, timestamp: parseFloat(parsed.timestamp)});
     });
   }
 };

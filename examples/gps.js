@@ -11,7 +11,10 @@ var gps = require('../').connect(tessel.port('d'));
 // Initialize the GPS
 gps.on('ready', function() {
   console.log('GPS module powered and ready. Waiting for satellites...');
-  // Stream data
+  // Use some of the built-ins to act when we get some data
+  gps.on('connected', function (numSat))
+
+
   // gps.on('data', function() {
   //   console.log(gps.getSatellites()); //if numSat is 0, try going outside
   //   console.log(gps.getCoordinates()); //options: 'deg-min-sec', 'deg-dec', default 'deg-min-dec'
