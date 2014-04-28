@@ -23,7 +23,6 @@ var GPS = function (hardware, callback) {
   this.powerState = 'off';
   this.timeoutDuration = 10*1000;
   this.format = 'deg-min-dec';
-  this.numSats = 0;
 
   // Turn the module on
   self.initialPowerSequence(function (err) {
@@ -308,6 +307,7 @@ GPS.prototype.onFix = function (parsed) {
   */
   this.emitNumSatellites(parsed);
   this.emitCoordinates(parsed);
+  this.emitAltitude(parsed);
 };
 
 GPS.prototype.emitNumSatellites = function (parsed) {
@@ -319,13 +319,13 @@ GPS.prototype.emitNumSatellites = function (parsed) {
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (self.numSats === 0 && parsed.numSat > 0) {
+  if (parsed.numSats > 0) {
     setImmediate(function () {
-      self.emit('connected', parsed.numSat);
+      self.emit('connected', parsed.numSat);    //  found 1st satellite
     });
-  } else if (self.numSats > 0 && parsed.numSat === 0) {
+  } else if (parsed.numSat === 0) {
     setImmediate(function () {
-      self.emit('disconnected', parsed.numSat);
+      self.emit('disconnected', parsed.numSat); //  lost all satellites
     });
   }
   self.numSats = parsed.numSat;
@@ -337,7 +337,7 @@ GPS.prototype.emitNumSatellites = function (parsed) {
 
 GPS.prototype.emitCoordinates = function (parsed) {
   /*
-  Format and emit the coordinates in parsed
+  Format and emit the coordinates in parsed NMEA message
   
   Arg
     parsed
@@ -390,7 +390,7 @@ GPS.prototype.emitCoordinates = function (parsed) {
 
 GPS.prototype.emitAltitude = function (parsed) {
   /*
-  Emit the altitude in the given parsed
+  Emit the altitude in the given parsed NMEA message
 
   Arg
     parsed
