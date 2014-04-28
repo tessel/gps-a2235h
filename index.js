@@ -305,34 +305,41 @@ GPS.prototype.onFix = function (parsed) {
     parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
-  this.emitNumSatellites(parsed);
+  this.emitNumSatellitesInView(parsed);
   this.emitCoordinates(parsed);
   this.emitAltitude(parsed);
 };
 
-GPS.prototype.emitNumSatellites = function (parsed) {
+GPS.prototype.emitNumSatellitesInView = function (parsed) {
   /*
-  List the satellites the module can see
+  The number of satellites the module can see
 
   Arg
     parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (parsed.numSats > 0) {
+  if (parsed.type === 'satellite-list-partial' ) {
     setImmediate(function () {
-      self.emit('connected', parsed.numSat);    //  found 1st satellite
-    });
-  } else if (parsed.numSat === 0) {
-    setImmediate(function () {
-      self.emit('disconnected', parsed.numSat); //  lost all satellites
+      self.emit('satsInView', parsed.satsInView || 0);
     });
   }
-  self.numSats = parsed.numSat;
+};
 
-  setImmediate(function () {
-    self.emit('numSatellites', parsed.numSat);
-  });
+GPS.prototype.emitActiveSatellites = function (parsed) {
+  /*
+  List the satellites the given parsed NMEA message used to calculate something 
+
+  Arg
+    parsed
+      The output of nmea.parse(): an object containing the parsed NEMA message
+  */
+  var self = this;
+  if (parsed.type === 'active-satellites' ) {
+    setImmediate(function () {
+      self.emit('activeSats', parsed.satellites || []);
+    });
+  }
 };
 
 GPS.prototype.emitCoordinates = function (parsed) {
