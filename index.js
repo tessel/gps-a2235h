@@ -3,7 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 var Packetizer = require('./lib/packetizer');
 
-var DEBUG = false;  //  Set to true for debug console logs
+var DEBUG = true;  //  Set to true for debug console logs
 
 var GPS = function (hardware, callback) {
   /*
@@ -26,18 +26,18 @@ var GPS = function (hardware, callback) {
   this.numSats = 0;
 
   // Turn the module on
-  self.initialPowerSequence(function(err) {
+  self.initialPowerSequence(function (err) {
     if (!err) {
       // Once we are on, emit the connected event
-      self.beginDecoding(function() {
+      self.beginDecoding(function () {
 
         self.on('fix', self.onFix);
 
-        self.on('coordinates', function() {
+        self.on('coordinates', function () {
           console.log('Why can\'t I pick it up externally?');
         });
 
-        setImmediate(function() {
+        setImmediate(function () {
           self.emit('ready');
           if (callback) {
             callback();
@@ -45,7 +45,7 @@ var GPS = function (hardware, callback) {
         });
       });
     } else {
-      setImmediate(function() {
+      setImmediate(function () {
         self.emit('error', err);
       });
     }
@@ -70,7 +70,7 @@ GPS.prototype.initialPowerSequence = function (callback) {
 
   function waitForData () {
     //  Remove this listener when we hear something (anything) from the GPS
-    self.removeListener('data', waitForData);
+    self.uart.removeListener('data', waitForData);
 
     clearTimeout(noReceiveTimeout);
 
@@ -83,7 +83,7 @@ GPS.prototype.initialPowerSequence = function (callback) {
 
   function noDataRecieved () {
     // Remove the listener for any data
-    self.removeListener('data', waitForData);
+    self.uart.removeListener('data', waitForData);
     // Clear the timeout 
     clearTimeout(noReceiveTimeout);
     // Call the callback
@@ -99,14 +99,14 @@ GPS.prototype.initialPowerSequence = function (callback) {
   */
 
   // This event listener will wait for valid data to note that we are on
-  self.uart.once('data', function(data) {
+  self.uart.once('data', function (data) {
     waitForData(data);
   });
 
   // Set the timeout to try to turn on if not already
   noReceiveTimeout = setTimeout(function alreadyOn() {
     // Try to turn on
-    self.powerOn(function() {
+    self.powerOn(function () {
       // If it's still not on
       if (DEBUG) {
         console.log('state after power cycle:', self.powerState);
@@ -116,7 +116,7 @@ GPS.prototype.initialPowerSequence = function (callback) {
         if (DEBUG) {
           console.log('Trying once more...');
         }
-        noReceiveTimeout = setTimeout(function() {
+        noReceiveTimeout = setTimeout(function () {
           // If we still didn't get anything, fail the connect
           noDataRecieved();
         }, 1000);
@@ -135,8 +135,8 @@ GPS.prototype.powerOn = function (callback) {
       Callback function; arg: err
   */
   var self = this;
-  self.power('on', function() {
-    setImmediate(function() {
+  self.power('on', function () {
+    setImmediate(function () {
       self.emit('powerOn');
     });
     if (callback) {
@@ -155,8 +155,8 @@ GPS.prototype.powerOff = function (callback) {
       Callback function; arg: err
   */
   var self = this;
-  self.power('off', function() {
-    setImmediate(function() {
+  self.power('off', function () {
+    setImmediate(function () {
       self.emit('powerOff');
     });
     if (callback) {
@@ -165,7 +165,7 @@ GPS.prototype.powerOff = function (callback) {
   });
 };
 
-GPS.prototype.power = function(state, callback) {
+GPS.prototype.power = function (state, callback) {
   /*
   Toggle the power pin of the A2235-H (attached to hardware.gpio[3]). Assumes
   the module knows what power state it is in.
@@ -203,7 +203,7 @@ GPS.prototype.power = function(state, callback) {
   }
 };
 
-GPS.prototype.beginDecoding = function(callback) {
+GPS.prototype.beginDecoding = function (callback) {
   /*
   After making contact with the A2235-H, start decoging its NMEA messages to
   get information from the GPS satellites
@@ -219,7 +219,7 @@ GPS.prototype.beginDecoding = function(callback) {
   // Tell it to start packetizing
   packetizer.packetize();
   // When we get a packet
-  packetizer.on('packet', function(packet) {
+  packetizer.on('packet', function (packet) {
     if (DEBUG) {
       console.log('  Packet\t', packet);
     }
@@ -237,7 +237,7 @@ GPS.prototype.beginDecoding = function(callback) {
       }
       // If sucessful, emit the parsed NMEA object by its type
       if (datum) {
-        setImmediate(function() {
+        setImmediate(function () {
           // Emit the type of packet
           self.emit(datum.type, datum);
         });
@@ -273,7 +273,7 @@ GPS.prototype.uartExchange = function (callback) {
   }
 };
 
-GPS.prototype.setCoordinateFormat = function(format) {
+GPS.prototype.setCoordinateFormat = function (format) {
   /*
   Configure how the module reports latitude and longitude
 
@@ -297,7 +297,7 @@ GPS.prototype.setCoordinateFormat = function(format) {
   }
 };
 
-GPS.prototype.onFix = function(fix) {
+GPS.prototype.onFix = function (fix) {
   /*
   Called when we get a NMEA message which indicates that the GPS has a 3D fix 
   on its position.
@@ -310,7 +310,7 @@ GPS.prototype.onFix = function(fix) {
   this.emitCoordinates(fix);
 };
 
-GPS.prototype.emitNumSatellites = function(fix) {
+GPS.prototype.emitNumSatellites = function (fix) {
   /*
   List the satellites the module can see
 
@@ -320,22 +320,22 @@ GPS.prototype.emitNumSatellites = function(fix) {
   */
   var self = this;
   if (self.numSats === 0 && fix.numSat > 0) {
-    setImmediate(function() {
+    setImmediate(function () {
       self.emit('connected', fix.numSat);
     });
   } else if (self.numSats > 0 && fix.numSat === 0) {
-    setImmediate(function() {
+    setImmediate(function () {
       self.emit('disconnected', fix.numSat);
     });
   }
   self.numSats = fix.numSat;
 
-  setImmediate(function() {
+  setImmediate(function () {
     self.emit('numSatellites', fix.numSat);
   });
 };
 
-GPS.prototype.emitCoordinates = function(fix) {
+GPS.prototype.emitCoordinates = function (fix) {
   /*
   Format and emit the coordinates in fix
   
@@ -381,14 +381,14 @@ GPS.prototype.emitCoordinates = function(fix) {
     }
     var coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(fix.timestamp)};
 
-    setImmediate(function() {
+    setImmediate(function () {
       self.emit('altitude', {alt: fix.alt, timestamp: parseFloat(fix.timestamp)});
       self.emit('coordinates', coordinates);
     });
   }
 };
 
-GPS.prototype.emitAltitude = function(fix) {
+GPS.prototype.emitAltitude = function (fix) {
   /*
   Emit the altitude in the given fix
 
@@ -401,13 +401,13 @@ GPS.prototype.emitAltitude = function(fix) {
 
     fix.alt = parseInt(fix.alt);
 
-    setImmediate(function() {
+    setImmediate(function () {
       self.emit('altitude', {alt: fix.alt, timestamp: parseFloat(fix.timestamp)});
     });
   }
 };
 
-GPS.prototype.getAttribute = function(attribute, callback) {
+GPS.prototype.getAttribute = function (attribute, callback) {
   /*
   Extract a specific attribute from incoming NMEA data and call the given 
   callback with the value
@@ -425,14 +425,14 @@ GPS.prototype.getAttribute = function(attribute, callback) {
   var failHandler;
   var successHandler;
 
-  successHandler = function(attributeData) {
+  successHandler = function (attributeData) {
     clearTimeout(failTimeout);
     if (callback) {
       callback(null, attributeData);
     }
   };
 
-  failHandler = function() {
+  failHandler = function () {
     self.removeListener(attribute, successHandler);
     if (callback) {
       callback(new Error('Timeout Error.'));
@@ -444,12 +444,12 @@ GPS.prototype.getAttribute = function(attribute, callback) {
   failTimeout = setTimeout(failHandler, self.timeoutDuration);
 };
 
-GPS.prototype.getNumSatellites = function(callback) {
+GPS.prototype.getNumSatellites = function (callback) {
   //  Pass the number of visible satellites to the callback.
   this.getAttribute('numSatellites', callback);
 };
 
-GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
+GPS.prototype.getNumSatDependentAttribute = function (attribute, callback) {
   /*
   Check to see if satellites are visible and call the callback if they are
 
@@ -461,7 +461,7 @@ GPS.prototype.getNumSatDependentAttribute = function(attribute, callback) {
       visible. Args: err, attributeData
   */
   var self = this;
-  self.getAttribute('numSatellites', function(err, num) {
+  self.getAttribute('numSatellites', function (err, num) {
     if (err) {
       if (callback) {
        callback(err);
@@ -525,7 +525,7 @@ GPS.prototype.getAltitude = function (callback) {
 // 	} else {return 'please use deg-dec coordinates'}
 // }
 
-var connect = function(hardware) {
+var connect = function (hardware) {
 	return new GPS(hardware);
 };
 
