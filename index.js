@@ -258,8 +258,10 @@ GPS.prototype.uartExchange = function (callback) {
     callback
       Callback function
   */
-  //Configure GPS baud rate to 9600, talk in NMEA 
-  var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
+  //  Configure GPS baud rate to 9600, talk in NMEA 
+  var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 
+    0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 
+    0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
 
   // Write the message
   this.uart.write(characters);
@@ -288,7 +290,8 @@ GPS.prototype.setCoordinateFormat = function (format) {
   if (format === 'utm') {
     // if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
     console.warn('UTM not currently supported. Voice your outrage to @selkeymoonbeam.');
-  } else if (format != 'deg-min-sec' || format != 'deg-dec' || format != 'deg-min-dec') {
+  } else if (format != 'deg-min-sec' || format != 'deg-dec' || 
+    format != 'deg-min-dec') {
     this.format = null;
     console.warn('Invalid format. Must be \'dig-min-sec\', \'deg-dec\', or \'deg-min-dec\'');
   } else {
@@ -326,18 +329,20 @@ GPS.prototype.emitNumSatellitesInView = function (parsed) {
   }
 };
 
-GPS.prototype.emitActiveSatellites = function (parsed) {
+GPS.prototype.emitSatellitesInView = function (parsed) {
   /*
-  List the satellites the given parsed NMEA message used to calculate something 
+  List the satellites that the module can see.
+  Note that the complete list usually spans multiple NEMA messges.
 
   Arg
     parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (parsed.type === 'active-satellites' ) {
+  if (parsed.type === 'satellite-list-partial' || 
+    parsed.type === 'satellite-list') {
     setImmediate(function () {
-      self.emit('activeSats', parsed.satellites || []);
+      self.emit('satList', parsed.satellites || []);
     });
   }
 };
@@ -351,7 +356,7 @@ GPS.prototype.emitCoordinates = function (parsed) {
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (self.numSats) {
+  if (parsed.lon) {
     var latPole = parsed.latPole;
     var lonPole = parsed.lonPole;
     var lat = parsed.lat;
@@ -386,10 +391,12 @@ GPS.prototype.emitCoordinates = function (parsed) {
       latitude = [latDeg, latMin, latPole];
       longitude = [lonDeg, lonMin, lonPole];
     }
-    var coordinates = {lat: latitude, lon: longitude, timestamp: parseFloat(parsed.timestamp)};
+    var coordinates = {lat: latitude, lon: longitude, 
+      timestamp: parseFloat(parsed.timestamp)};
 
     setImmediate(function () {
-      self.emit('altitude', {alt: parsed.alt, timestamp: parseFloat(parsed.timestamp)});
+      self.emit('altitude', {alt: parsed.alt, 
+        timestamp: parseFloat(parsed.timestamp)});
       self.emit('coordinates', coordinates);
     });
   }
@@ -404,12 +411,13 @@ GPS.prototype.emitAltitude = function (parsed) {
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (self.numSas !== 0) {
+  if (parsed.alt) {
 
     parsed.alt = parseInt(parsed.alt);
 
     setImmediate(function () {
-      self.emit('altitude', {alt: parsed.alt, timestamp: parseFloat(parsed.timestamp)});
+      self.emit('altitude', {alt: parsed.alt, 
+        timestamp: parseFloat(parsed.timestamp)});
     });
   }
 };
