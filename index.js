@@ -402,7 +402,7 @@ GPS.prototype.emitCoordinates = function (parsed) {
   }
 };
 
-GPS.prototype.emitAltitude = function (parsed) {
+GPS.prototype.emitAltitude = function (parsed) { 
   /*
   Emit the altitude in the given parsed NMEA message
 
