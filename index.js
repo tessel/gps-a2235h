@@ -23,13 +23,13 @@ var GPS = function (hardware, callback) {
   this.powerState = 'off';
   this.timeoutDuration = 10*1000;
   this.format = 'deg-min-dec';
-  // A collection of attributes and callback functions. See set/removeDirective.
+  //  A collection of attributes and callback functions. See set/removeDirective.
   this.directives = {};
 
-  // Turn the module on
+  //  Turn the module on
   self.initialPowerSequence(function (err) {
     if (!err) {
-      // Once we are on, emit the connected event
+      //  Once we are on, emit the connected event
       self.beginDecoding(function () {
 
         self.on('fix', self.onFix);
@@ -83,11 +83,11 @@ GPS.prototype.initialPowerSequence = function (callback) {
   }
 
   function noDataRecieved () {
-    // Remove the listener for any data
+    //  Remove the listener for any data
     self.uart.removeListener('data', waitForData);
-    // Clear the timeout 
+    //  Clear the timeout 
     clearTimeout(noReceiveTimeout);
-    // Call the callback
+    //  Call the callback
     if (callback) {
       callback(new Error('Unable to connect to module...'));
     }
@@ -99,26 +99,26 @@ GPS.prototype.initialPowerSequence = function (callback) {
   If we still don't get it, something bigger is wrong
   */
 
-  // This event listener will wait for valid data to note that we are on
+  //  This event listener will wait for valid data to note that we are on
   self.uart.once('data', function (data) {
     waitForData(data);
   });
 
-  // Set the timeout to try to turn on if not already
+  //  Set the timeout to try to turn on if not already
   noReceiveTimeout = setTimeout(function alreadyOn() {
-    // Try to turn on
+    //  Try to turn on
     self.powerOn(function () {
-      // If it's still not on
+      //  If it's still not on
       if (DEBUG) {
         console.log('state after power cycle:', self.powerState);
       }
       if (self.powerState === 'off') {
-        // Set the timeout once more
+        //  Set the timeout once more
         if (DEBUG) {
           console.log('Trying once more...');
         }
         noReceiveTimeout = setTimeout(function () {
-          // If we still didn't get anything, fail the connect
+          //  If we still didn't get anything, fail the connect
           noDataRecieved();
         }, 1000);
       }
@@ -178,11 +178,11 @@ GPS.prototype.power = function (state, callback) {
     callback
       Callback function
   */
-  // We need to switch from this state to the given state
+  //  We need to switch from this state to the given state
   var switchState = (state === 'on' ? 'off' : 'on');
   var self = this;
 
-  // Pull power high
+  //  Pull power high
   if (self.powerState === switchState) {
     if (DEBUG) {
       console.log('high');
@@ -193,9 +193,9 @@ GPS.prototype.power = function (state, callback) {
         console.log('low');
       }
       self.onOff.low();
-      // Pull power low
+      //  Pull power low
       if (self.powerState === switchState) {
-        // Set a timeout for it to have time to turn on and start sending
+        //  Set a timeout for it to have time to turn on and start sending
         setTimeout(callback, 500);
       }
     }, 250);
@@ -214,19 +214,19 @@ GPS.prototype.beginDecoding = function (callback) {
       Callback function
   */
   var self = this;
-  // Eventually replace this with stream packetizing... sorry Kolker
-  // Initializer our packetizer
+  //  Eventually replace this with stream packetizing... sorry Kolker
+  //  Initializer our packetizer
   var packetizer = new Packetizer(this.uart);
-  // Tell it to start packetizing
+  //  Tell it to start packetizing
   packetizer.packetize();
-  // When we get a packet
+  //  When we get a packet
   packetizer.on('packet', function (packet) {
     if (DEBUG) {
       console.log('  Packet\t', packet);
     }
-    // Make sure this is a valid packet
+    //  Make sure this is a valid packet
     if (packet[0] === '$') {
-      // Parse it
+      //  Parse it
       var datum = nmea.parse(packet);
 
       if (DEBUG) {  //  pretty print
@@ -236,10 +236,10 @@ GPS.prototype.beginDecoding = function (callback) {
           });
         console.log();
       }
-      // If sucessful, emit the parsed NMEA object by its type
+      //  If sucessful, emit the parsed NMEA object by its type
       if (datum) {
         setImmediate(function () {
-          // Emit the type of packet
+          //  Emit the type of packet
           self.emit(datum.type, datum);
           //  Do whatever else the user maps to specific attributes
           self.executeDirectives(datum);
@@ -267,10 +267,10 @@ GPS.prototype.uartExchange = function (callback) {
     0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 
     0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
 
-  // Write the message
+  //  Write the message
   this.uart.write(characters);
 
-  // Reset UART baud rate
+  //  Reset UART baud rate
   this.uart = this.hardware.UART({baudrate : 9600});
 
   if (callback) {
@@ -292,7 +292,7 @@ GPS.prototype.setCoordinateFormat = function (format) {
   */  
   this.format = format;
   if (format === 'utm') {
-    // if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
+    //  if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
     console.warn('UTM not currently supported. Voice your outrage to @selkeymoonbeam.');
   } else if (format != 'deg-min-sec' || format != 'deg-dec' || 
     format != 'deg-min-dec') {
@@ -564,9 +564,9 @@ GPS.prototype.getAltitude = function (callback) {
   this.getNumSatDependentAttribute('altitude', callback);
 };
 
-// GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
-// 	// takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
-// 	// returns boolean 'inRange' which is true when coordinates are in the rectangle
+//  GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
+// 	//  takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
+// 	//  returns boolean 'inRange' which is true when coordinates are in the rectangle
 // 	var buffer = this.cached;
 // 	var inRange = false;
 // 	if ((minCoordinates.lat.length === 2) && (maxCoordinates.lat.length === 2)) {
