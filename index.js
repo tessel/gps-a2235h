@@ -23,6 +23,8 @@ var GPS = function (hardware, callback) {
   this.powerState = 'off';
   this.timeoutDuration = 10*1000;
   this.format = 'deg-min-dec';
+  // A collection of attributes and callback functions. See set/removeDirective.
+  this.directives = {};
 
   // Turn the module on
   self.initialPowerSequence(function (err) {
@@ -239,6 +241,8 @@ GPS.prototype.beginDecoding = function (callback) {
         setImmediate(function () {
           // Emit the type of packet
           self.emit(datum.type, datum);
+          //  Do whatever else the user maps to specific attributes
+          self.executeDirectives(datum);
         });
       }
     }
@@ -297,6 +301,65 @@ GPS.prototype.setCoordinateFormat = function (format) {
   } else {
     this.format = format;
   }
+};
+
+GPS.prototype.setDirective = function (attribute, callback, next) {
+  /*
+  Set a callback function to be called for NMEA messages containing valid
+  forms (!== undefined) of the given attribute. Note that there can only be one
+  callback for any given attribute.
+
+  Args
+    attribute
+      The attribute for which the callback will be called
+    callback
+      Callback function to call with the NMEA message; args: err, parsed (an 
+        object with the contents of the NMEA message)
+    next
+      This function's callback function
+  */
+  if (this.directives[attribute]) {
+    console.warn('Overwriting existing directive for', attribute, 
+      'with', callback);
+  }
+  this.directives[attribute] = callback;
+};
+
+GPS.prototype.removeDirective = function (attribute, callback) {
+  /*
+  Remove the callback function to be called for NMEA messages containing valid
+  forms (not null) of the given attribute. Note that there can only be one
+  callback for any given attribute.
+
+  Args
+    attribute
+      The attribute for which the callback will be called
+    callback
+      Callback function to call
+  */
+  this.directives[attribute] = undefined;
+  if (callback) {
+    callback();
+  }
+};
+
+GPS.prototype.executeDirectives = function (parsed) {
+  /*
+  Every time we get a NMEA message from the GPS module, pass the parsed data to
+  the appropriate callbacks, as defined in directives
+
+  Arg
+    parsed
+      The output of nmea.parse(): an object containing the parsed NEMA message
+  */
+  var self = this;
+  Object.keys(self.directives).forEach(function (key) {
+    if (parsed[key] !== undefined) {
+      setImmediate(function () {
+        self.directives[key](parsed);
+      });
+    }
+  });
 };
 
 GPS.prototype.onFix = function (parsed) {
@@ -402,7 +465,7 @@ GPS.prototype.emitCoordinates = function (parsed) {
   }
 };
 
-GPS.prototype.emitAltitude = function (parsed) { 
+GPS.prototype.emitAltitude = function (parsed) {
   /*
   Emit the altitude in the given parsed NMEA message
 
@@ -425,7 +488,7 @@ GPS.prototype.emitAltitude = function (parsed) {
 GPS.prototype.getAttribute = function (attribute, callback) {
   /*
   Extract a specific attribute from incoming NMEA data and call the given 
-  callback with the value
+  callback with the NMEA object
 
   Args
     attribute
