@@ -235,9 +235,13 @@ GPS.prototype.beginDecoding = function (callback) {
         setImmediate(function () {
           //  Emit the packet by its type
           self.emit(datum.type, datum);
-          //  I know where I am!
+          //  Emit coordinates if the parsed message contains them
           if (datum.lon && datum.lat) {
             self.emitCoordinates(datum);
+          }
+          //  Ditto for altitude
+          if (datum.alt) {
+            self.emitAltitude(datum);
           }
           //  Do whatever else the user maps to specific attributes
           self.executeCallbackss(datum);
