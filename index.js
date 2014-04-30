@@ -34,15 +34,15 @@ var GPS = function (hardware, callback) {
 
         setImmediate(function () {
           self.emit('ready');
-          if (callback) {
-            callback();
-          }
         });
       });
     } else {
       setImmediate(function () {
         self.emit('error', err);
       });
+    }
+    if (callback) {
+      callback();
     }
   });
 };
