@@ -23,20 +23,14 @@ var GPS = function (hardware, callback) {
   this.powerState = 'off';
   this.timeoutDuration = 10*1000;
   this.format = 'deg-min-dec';
-  //  A collection of attributes and callback functions. See set/removeDirective.
-  this.directives = {};
+  //  A collection of attributes and callback functions. See set/removeCallbacks.
+  this.callbacks = {};
 
   //  Turn the module on
   self.initialPowerSequence(function (err) {
     if (!err) {
       //  Once we are on, emit the connected event
       self.beginDecoding(function () {
-
-        self.on('fix', self.onFix);
-
-        self.on('coordinates', function () {
-          console.log('Why can\'t I pick it up externally?');
-        });
 
         setImmediate(function () {
           self.emit('ready');
@@ -79,7 +73,7 @@ GPS.prototype.initialPowerSequence = function (callback) {
     self.powerState = 'on';
 
     //  Tell the A2235-H that we want it to give us NMEA strings over UART
-    self.uartExchange(callback);
+    self._switchToNMEA9800(callback);
   }
 
   function noDataRecieved () {
@@ -242,7 +236,7 @@ GPS.prototype.beginDecoding = function (callback) {
           //  Emit the type of packet
           self.emit(datum.type, datum);
           //  Do whatever else the user maps to specific attributes
-          self.executeDirectives(datum);
+          self.executeCallbackss(datum);
         });
       }
     }
@@ -253,7 +247,7 @@ GPS.prototype.beginDecoding = function (callback) {
   }
 };
 
-GPS.prototype.uartExchange = function (callback) {
+GPS.prototype._switchToNMEA9800 = function (callback) {
   /*
   The A2235-H has been configured in hardware to use UART, but we need to send 
   it this command so that it gives us NMEA messages as opposed to SiRF binary.
@@ -303,305 +297,316 @@ GPS.prototype.setCoordinateFormat = function (format) {
   }
 };
 
-GPS.prototype.setDirective = function (attribute, callback, next) {
+GPS.prototype.setCallback = function (attribute, cb, callback) {
   /*
   Set a callback function to be called for NMEA messages containing valid
-  forms (!== undefined) of the given attribute. Note that there can only be one
-  callback for any given attribute.
+  forms (!== undefined) of the given attribute. 
+
+  Notes
+  - There can only be one callback for any given attribute
+  - All messages are already emitted by their type (see beginDecoding)
+  - Not all message attributes carry the same kind of data in all message types 
 
   Args
     attribute
       The attribute for which the callback will be called
-    callback
+    cb
       Callback function to call with the NMEA message; args: err, parsed (an 
         object with the contents of the NMEA message)
-    next
+    callback
       This function's callback function
   */
-  if (this.directives[attribute]) {
+  if (this.callbacks[attribute]) {
     console.warn('Overwriting existing directive for', attribute, 
-      'with', callback);
+      'with', cb);
   }
-  this.directives[attribute] = callback;
-};
-
-GPS.prototype.removeDirective = function (attribute, callback) {
-  /*
-  Remove the callback function to be called for NMEA messages containing valid
-  forms (not null) of the given attribute. Note that there can only be one
-  callback for any given attribute.
-
-  Args
-    attribute
-      The attribute for which the callback will be called
-    callback
-      Callback function to call
-  */
-  this.directives[attribute] = undefined;
+  this.callbacks[attribute] = callback;
   if (callback) {
     callback();
   }
 };
 
-GPS.prototype.executeDirectives = function (parsed) {
+GPS.prototype.removeCallback = function (attribute, callback) {
   /*
-  Every time we get a NMEA message from the GPS module, pass the parsed data to
-  the appropriate callbacks, as defined in directives
+  Remove the callback function to be called for NMEA messages containing valid
+  forms of the given attribute.
+  Note that there can only be one callback for any given attribute.
+
+  Args
+    attribute
+      The attribute for which the callback will be called. A string.
+    callback
+      Callback function
+  */
+  if (this.callbacks[attribute]) {
+    delete this.callbacks[attribute];
+  } else {
+    console.warn('No callback existed for', attribute);
+  }
+  if (callback) {
+    callback();
+  }
+};
+
+GPS.prototype.executeCallbacks = function (parsed) {
+  /*
+  Pass the parsed data to the appropriate callback functions, as defined in
+  this.callbacks. Called every time we get a NMEA message (see beginDecoding).
 
   Arg
     parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  Object.keys(self.directives).forEach(function (key) {
-    if (parsed[key] !== undefined) {
-      setImmediate(function () {
-        self.directives[key](parsed);
+  Object.keys(self.callbacks).forEach(function (key) {
+    if (Object.keys(parsed).indexOf(key) !== -1) {  //  Is the key there?
+      setImmediate(function (err) {
+        self.callbacks[key](err, parsed);
       });
     }
   });
 };
 
-GPS.prototype.onFix = function (parsed) {
-  /*
-  Called when we get a NMEA message which indicates that the GPS has a 3D fix 
-  on its position.
+// GPS.prototype.onFix = function (parsed) {
+//   /*
+//   Called when we get a NMEA message which indicates that the GPS has a 3D fix 
+//   on its position.
 
-  Arg
-    parsed
-      The output of nmea.parse(): an object containing the parsed NEMA message
-  */
-  this.emitNumSatellitesInView(parsed);
-  this.emitCoordinates(parsed);
-  this.emitAltitude(parsed);
-};
+//   Arg
+//     parsed
+//       The output of nmea.parse(): an object containing the parsed NEMA message
+//   */
+//   this.emitNumSatellitesInView(parsed);
+//   this.emitCoordinates(parsed);
+//   this.emitAltitude(parsed);
+// };
 
-GPS.prototype.emitNumSatellitesInView = function (parsed) {
-  /*
-  The number of satellites the module can see
+// GPS.prototype.emitNumSatellitesInView = function (parsed) {
+//   /*
+//   The number of satellites the module can see
 
-  Arg
-    parsed
-      The output of nmea.parse(): an object containing the parsed NEMA message
-  */
-  var self = this;
-  if (parsed.type === 'satellite-list-partial' ) {
-    setImmediate(function () {
-      self.emit('satsInView', parsed.satsInView || 0);
-    });
-  }
-};
+//   Arg
+//     parsed
+//       The output of nmea.parse(): an object containing the parsed NEMA message
+//   */
+//   var self = this;
+//   if (parsed.type === 'satellite-list-partial' ) {
+//     setImmediate(function () {
+//       self.emit('satsInView', parsed.satsInView || 0);
+//     });
+//   }
+// };
 
-GPS.prototype.emitSatellitesInView = function (parsed) {
-  /*
-  List the satellites that the module can see.
-  Note that the complete list usually spans multiple NEMA messges.
+// GPS.prototype.emitSatellitesInView = function (parsed) {
+//   /*
+//   List the satellites that the module can see.
+//   Note that the complete list usually spans multiple NEMA messges.
 
-  Arg
-    parsed
-      The output of nmea.parse(): an object containing the parsed NEMA message
-  */
-  var self = this;
-  if (parsed.type === 'satellite-list-partial' || 
-    parsed.type === 'satellite-list') {
-    setImmediate(function () {
-      self.emit('satList', parsed.satellites || []);
-    });
-  }
-};
+//   Arg
+//     parsed
+//       The output of nmea.parse(): an object containing the parsed NEMA message
+//   */
+//   var self = this;
+//   if (parsed.type === 'satellite-list-partial' || 
+//     parsed.type === 'satellite-list') {
+//     setImmediate(function () {
+//       self.emit('satList', parsed.satellites || []);
+//     });
+//   }
+// };
 
-GPS.prototype.emitCoordinates = function (parsed) {
-  /*
-  Format and emit the coordinates in parsed NMEA message
+// GPS.prototype.emitCoordinates = function (parsed) {
+//   /*
+//   Format and emit the coordinates in parsed NMEA message
   
-  Arg
-    parsed
-      The output of nmea.parse(): an object containing the parsed NEMA message
-  */
-  var self = this;
-  if (parsed.lon) {
-    var latPole = parsed.latPole;
-    var lonPole = parsed.lonPole;
-    var lat = parsed.lat;
-    var lon = parsed.lon;
-    var dec = lat.indexOf('.');
-    var latDeg = parseFloat(lat.slice(0, dec-2));
-    var latMin = parseFloat(lat.slice(dec-2, lat.length));
-    dec = lon.indexOf('.');
-    var lonDeg = parseFloat(lon.slice(0, dec-2));
-    var lonMin = parseFloat(lon.slice(dec-2, lon.length));
-    var longitude;
-    var latitude;
-    var latSec;
-    var lonSec;
+//   Arg
+//     parsed
+//       The output of nmea.parse(): an object containing the parsed NEMA message
+//   */
+//   var self = this;
+//   if (parsed.lon) {
+//     var latPole = parsed.latPole;
+//     var lonPole = parsed.lonPole;
+//     var lat = parsed.lat;
+//     var lon = parsed.lon;
+//     var dec = lat.indexOf('.');
+//     var latDeg = parseFloat(lat.slice(0, dec-2));
+//     var latMin = parseFloat(lat.slice(dec-2, lat.length));
+//     dec = lon.indexOf('.');
+//     var lonDeg = parseFloat(lon.slice(0, dec-2));
+//     var lonMin = parseFloat(lon.slice(dec-2, lon.length));
+//     var longitude;
+//     var latitude;
+//     var latSec;
+//     var lonSec;
 
-    if (self.format === 'deg-min-sec') {
-      latSec = parseFloat(latMin.toString().split('.')[1] * 0.6);
-      latMin = parseInt(latMin.toString().split('.')[0]);
+//     if (self.format === 'deg-min-sec') {
+//       latSec = parseFloat(latMin.toString().split('.')[1] * 0.6);
+//       latMin = parseInt(latMin.toString().split('.')[0]);
 
-      lonSec = parseFloat(lonMin.toString().split('.')[1] * 0.6);
-      lonMin = parseInt(lonMin.toString().split('.')[0]);
+//       lonSec = parseFloat(lonMin.toString().split('.')[1] * 0.6);
+//       lonMin = parseInt(lonMin.toString().split('.')[0]);
 
-      latitude = [latDeg, latMin, latSec, latPole];
-      longitude = [lonDeg, lonMin, lonSec, lonPole];
-    } else if (self.format === 'deg-dec') {
-      lat = latDeg + (latMin / 60);
-      lon = lonDeg + (lonMin / 60);
+//       latitude = [latDeg, latMin, latSec, latPole];
+//       longitude = [lonDeg, lonMin, lonSec, lonPole];
+//     } else if (self.format === 'deg-dec') {
+//       lat = latDeg + (latMin / 60);
+//       lon = lonDeg + (lonMin / 60);
 
-      latitude = [lat, latPole];
-      longitude = [lon, lonPole];
-    } else {
-      latitude = [latDeg, latMin, latPole];
-      longitude = [lonDeg, lonMin, lonPole];
-    }
-    var coordinates = {lat: latitude, lon: longitude, 
-      timestamp: parseFloat(parsed.timestamp)};
+//       latitude = [lat, latPole];
+//       longitude = [lon, lonPole];
+//     } else {
+//       latitude = [latDeg, latMin, latPole];
+//       longitude = [lonDeg, lonMin, lonPole];
+//     }
+//     var coordinates = {lat: latitude, lon: longitude, 
+//       timestamp: parseFloat(parsed.timestamp)};
 
-    setImmediate(function () {
-      self.emit('altitude', {alt: parsed.alt, 
-        timestamp: parseFloat(parsed.timestamp)});
-      self.emit('coordinates', coordinates);
-    });
-  }
-};
+//     setImmediate(function () {
+//       self.emit('altitude', {alt: parsed.alt, 
+//         timestamp: parseFloat(parsed.timestamp)});
+//       self.emit('coordinates', coordinates);
+//     });
+//   }
+// };
 
-GPS.prototype.emitAltitude = function (parsed) {
-  /*
-  Emit the altitude in the given parsed NMEA message
+// GPS.prototype.emitAltitude = function (parsed) {
+//   /*
+//   Emit the altitude in the given parsed NMEA message
 
-  Arg
-    parsed
-      The output of nmea.parse(): an object containing the parsed NEMA message
-  */
-  var self = this;
-  if (parsed.alt) {
+//   Arg
+//     parsed
+//       The output of nmea.parse(): an object containing the parsed NEMA message
+//   */
+//   var self = this;
+//   if (parsed.alt) {
 
-    parsed.alt = parseInt(parsed.alt);
+//     parsed.alt = parseInt(parsed.alt);
 
-    setImmediate(function () {
-      self.emit('altitude', {alt: parsed.alt, 
-        timestamp: parseFloat(parsed.timestamp)});
-    });
-  }
-};
+//     setImmediate(function () {
+//       self.emit('altitude', {alt: parsed.alt, 
+//         timestamp: parseFloat(parsed.timestamp)});
+//     });
+//   }
+// };
 
-GPS.prototype.getAttribute = function (attribute, callback) {
-  /*
-  Extract a specific attribute from incoming NMEA data and call the given 
-  callback with the NMEA object
+// GPS.prototype.getAttribute = function (attribute, callback) {
+  
+//   Extract a specific attribute from incoming NMEA data and call the given 
+//   callback with the NMEA object
 
-  Args
-    attribute
-      The key for a value in the parsed NMEA object. See documentation for the 
-        nmea module on npm for a complete list of attributes:
-        https://www.npmjs.org/package/nmea
-    callback
-      Callback function to call for the data in the specific attribute
-  */
-  var self = this;
-  var failTimeout;
-  var failHandler;
-  var successHandler;
+//   Args
+//     attribute
+//       The key for a value in the parsed NMEA object. See documentation for the 
+//         nmea module on npm for a complete list of attributes:
+//         https://www.npmjs.org/package/nmea
+//     callback
+//       Callback function to call for the data in the specific attribute
+  
+//   var self = this;
+//   var failTimeout;
+//   var failHandler;
+//   var successHandler;
 
-  successHandler = function (attributeData) {
-    clearTimeout(failTimeout);
-    if (callback) {
-      callback(null, attributeData);
-    }
-  };
+//   successHandler = function (attributeData) {
+//     clearTimeout(failTimeout);
+//     if (callback) {
+//       callback(null, attributeData);
+//     }
+//   };
 
-  failHandler = function () {
-    self.removeListener(attribute, successHandler);
-    if (callback) {
-      callback(new Error('Timeout Error.'));
-    }
-  };
+//   failHandler = function () {
+//     self.removeListener(attribute, successHandler);
+//     if (callback) {
+//       callback(new Error('Timeout Error.'));
+//     }
+//   };
 
-  self.once(attribute, successHandler);
+//   self.once(attribute, successHandler);
 
-  failTimeout = setTimeout(failHandler, self.timeoutDuration);
-};
+//   failTimeout = setTimeout(failHandler, self.timeoutDuration);
+// };
 
-GPS.prototype.getNumSatellites = function (callback) {
-  //  Pass the number of visible satellites to the callback.
-  this.getAttribute('numSatellites', callback);
-};
+// GPS.prototype.getNumSatellites = function (callback) {
+//   //  Pass the number of visible satellites to the callback.
+//   this.getAttribute('numSatellites', callback);
+// };
 
-GPS.prototype.getNumSatDependentAttribute = function (attribute, callback) {
-  /*
-  Check to see if satellites are visible and call the callback if they are
+// GPS.prototype.getNumSatDependentAttribute = function (attribute, callback) {
+//   /*
+//   Check to see if satellites are visible and call the callback if they are
 
-  Args
-    attribute
-      The attribute to act on if satellites are visible
-    callback
-      Callback function to call with the given attribute if satellites are 
-      visible. Args: err, attributeData
-  */
-  var self = this;
-  self.getAttribute('numSatellites', function (err, num) {
-    if (err) {
-      if (callback) {
-       callback(err);
-      }
-    } else if (num === 0) {
-      if (callback) {
-        callback(new Error('No Satellites available.'), 0);
-      }
-    } else {
-      self.getAttribute(attribute, callback);
-    }
-  });
-};
+//   Args
+//     attribute
+//       The attribute to act on if satellites are visible
+//     callback
+//       Callback function to call with the given attribute if satellites are 
+//       visible. Args: err, attributeData
+//   */
+//   var self = this;
+//   self.getAttribute('numSatellites', function (err, num) {
+//     if (err) {
+//       if (callback) {
+//        callback(err);
+//       }
+//     } else if (num === 0) {
+//       if (callback) {
+//         callback(new Error('No Satellites available.'), 0);
+//       }
+//     } else {
+//       self.getAttribute(attribute, callback);
+//     }
+//   });
+// };
 
-GPS.prototype.getCoordinates = function (callback) {
-  //  Pass the coordinates to the callback
-  this.getNumSatDependentAttribute('coordinates', callback);
-};
+// GPS.prototype.getCoordinates = function (callback) {
+//   //  Pass the coordinates to the callback
+//   this.getNumSatDependentAttribute('coordinates', callback);
+// };
 
-GPS.prototype.getAltitude = function (callback) {
-  //  Pass the altitude to the callback
-  this.getNumSatDependentAttribute('altitude', callback);
-};
+// GPS.prototype.getAltitude = function (callback) {
+//   //  Pass the altitude to the callback
+//   this.getNumSatDependentAttribute('altitude', callback);
+// };
 
-//  GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
-// 	//  takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
-// 	//  returns boolean 'inRange' which is true when coordinates are in the rectangle
-// 	var buffer = this.cached;
-// 	var inRange = false;
-// 	if ((minCoordinates.lat.length === 2) && (maxCoordinates.lat.length === 2)) {
-// 		if (minCoordinates.lat[1] === 'S') {
-// 			minLat = -minCoordinates.lat[0];
-// 		} else {minLat = minCoordinates.lat[0]}
-// 		if (minCoordinates.lon[1] === 'W') {
-// 			minLon = -minCoordinates.lon[0];
-// 		} else {minLon = minCoordinates.lon[0]}
-// 		if (maxCoordinates.lat[1] === 'S') {
-// 			maxLat = -maxCoordinates.lat[0];
-// 		} else {maxLat = maxCoordinates.lat[0]}
-// 		if (maxCoordinates.lon[1] === 'W') {
-// 			maxLon = -maxCoordinates.lon[0];
-// 		} else {maxLon = maxCoordinates.lon[0]}
+// //  GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
+// // 	//  takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
+// // 	//  returns boolean 'inRange' which is true when coordinates are in the rectangle
+// // 	var buffer = this.cached;
+// // 	var inRange = false;
+// // 	if ((minCoordinates.lat.length === 2) && (maxCoordinates.lat.length === 2)) {
+// // 		if (minCoordinates.lat[1] === 'S') {
+// // 			minLat = -minCoordinates.lat[0];
+// // 		} else {minLat = minCoordinates.lat[0]}
+// // 		if (minCoordinates.lon[1] === 'W') {
+// // 			minLon = -minCoordinates.lon[0];
+// // 		} else {minLon = minCoordinates.lon[0]}
+// // 		if (maxCoordinates.lat[1] === 'S') {
+// // 			maxLat = -maxCoordinates.lat[0];
+// // 		} else {maxLat = maxCoordinates.lat[0]}
+// // 		if (maxCoordinates.lon[1] === 'W') {
+// // 			maxLon = -maxCoordinates.lon[0];
+// // 		} else {maxLon = maxCoordinates.lon[0]}
 
-// 		//get current coordinates
-// 		currentCoords = this.getCoordinates(this.cached);
-// 		if (currentCoords != 'no navigation data in buffer') {
-// 			if (currentCoords.lat[1] === 'S') {
-// 				currentLat = -currentCoords.lat[0];
-// 			} else {currentLat = currentCoords.lat[0]}
-// 			if (currentCoords.lon[1] === 'W') {
-// 				currentLon = -currentCoords.lon[0];
-// 			} else {currentLon = currentCoords.lon[0]}
+// // 		//get current coordinates
+// // 		currentCoords = this.getCoordinates(this.cached);
+// // 		if (currentCoords != 'no navigation data in buffer') {
+// // 			if (currentCoords.lat[1] === 'S') {
+// // 				currentLat = -currentCoords.lat[0];
+// // 			} else {currentLat = currentCoords.lat[0]}
+// // 			if (currentCoords.lon[1] === 'W') {
+// // 				currentLon = -currentCoords.lon[0];
+// // 			} else {currentLon = currentCoords.lon[0]}
 
-// 			//compare current coordinates with geofence
-// 			if ((currentLat > minLat) && (currentLat < maxLat) && (currentLon > minLon) && (currentLon < maxLon)) {
-// 				inRange = true;
-// 			} else {inRange = false}
-// 			var timestamp = currentCoords.timestamp;
-// 			return {inRange: inRange, timestamp: timestamp}
-// 		} else {return 'no position data'}
-// 	} else {return 'please use deg-dec coordinates'}
-// }
+// // 			//compare current coordinates with geofence
+// // 			if ((currentLat > minLat) && (currentLat < maxLat) && (currentLon > minLon) && (currentLon < maxLon)) {
+// // 				inRange = true;
+// // 			} else {inRange = false}
+// // 			var timestamp = currentCoords.timestamp;
+// // 			return {inRange: inRange, timestamp: timestamp}
+// // 		} else {return 'no position data'}
+// // 	} else {return 'please use deg-dec coordinates'}
+// // }
 
 var connect = function (hardware) {
 	return new GPS(hardware);
