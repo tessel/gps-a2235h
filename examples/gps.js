@@ -8,7 +8,7 @@ var tessel = require('tessel');
 var gps = require('../').connect(tessel.port('d'));
 
 //  Initialize the GPS
-gps.on('ready', function() {
+gps.on('ready', function () {
   console.log('GPS module powered and ready. Waiting for satellites...');
   
   //  Act on some of the built-in event emissions
@@ -35,7 +35,7 @@ gps.on('ready', function() {
   });
 
   //  Have the module act on a specific piece of data
-  var parseDate = function(parsed) {
+  var parseDate = function (parsed) {
     //  Extract and print the date and time from the given NMEA message
     if (parsed.timestamp) {
       var time = parsed.timestamp;
@@ -57,7 +57,7 @@ gps.on('ready', function() {
     }
   }
   //  When a parsed NMEA object contains a date key, call parseDate with it
-  gps.setCallback('date', function(err, parsed) {
+  gps.setCallback('date', function (err, parsed) {
     if (err) {
       console.log('Something went wrong...');
     } else {
@@ -66,6 +66,6 @@ gps.on('ready', function() {
   });
 });
 
-setInterval(function() {
+setInterval(function () {
   //  Stay alive
 }, 20000);
