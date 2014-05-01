@@ -1,28 +1,69 @@
 /*********************************************
 This gps example logs a stream of data:
 number of satellites, coordinates, altitude,
-and whether or not it is within a geofence.
 For best results, try it while outdoors.
 *********************************************/
 
 var tessel = require('tessel');
 var gps = require('../').connect(tessel.port('d'));
 
-// Initialize the GPS
+//  Initialize the GPS
 gps.on('ready', function() {
   console.log('GPS module powered and ready. Waiting for satellites...');
-  // Use some of the built-ins to act when we get some data
-  gps.on('connected', function (numSat))
+  
+  //  Act on some of the built-in event emissions
+  gps.on('coordinates', function (coords) {
+    console.log('Got some coordinates!');
+    console.log('  Lat:\t', coords.lat);
+    console.log('  Lat:\t', coords.lon);
+    console.log('  Timestamp:\t', coords.timestamp);
+  });
 
+  gps.on('altitude', function (alt) {
+    console.log('Got an altitude of', alt.alt, 
+      'meters (timestamp: ' + alt.timestamp + ')');
+  });
 
-  // gps.on('data', function() {
-  //   console.log(gps.getSatellites()); //if numSat is 0, try going outside
-  //   console.log(gps.getCoordinates()); //options: 'deg-min-sec', 'deg-dec', default 'deg-min-dec'
-  //   console.log(gps.getAltitude()); //options: 'feet', defaults to meters
-  //   // // Set geofence with specified opposite corners (minimum, maximum).
-  //   // // If position data is available, returns boolean true if gps is within the rectangle
-  //   // console.log (gps.geofence({lat: [42.29, 'N'], lon: [71.27, 'W']}, {lat: [42.30, 'N'], lon: [71.26, 'W']}));
-  // });
+  //  All data from the module is emitted by its type parameter. Parse one!
+  gps.on('satellite-list-partial', function (parsed) {
+    console.log('\nDetected (at least) the following satellites:');
+    //  Note that the module needs to do more than just 
+    //  detect a satellite in order to lock onto it
+    parsed.satellites.forEach(function (sat) {
+      console.log(' ', sat);
+    });
+  });
+
+  //  Have the module act on a specific piece of data
+  var parseDate = function(parsed) {
+    //  Extract and print the date and time from the given NMEA message
+    if (parsed.timestamp) {
+      var time = parsed.timestamp;
+      var date = parsed.date;
+  
+      //  Parse the data
+      var day = date.slice(0, 2);
+      var month = date.slice(2, 4);
+      var year = date.slice(4);
+      var hours = time.slice(0, 2);
+      var minutes = time.slice(2, 4);
+      var seconds = time.slice(4);
+  
+      console.log('\nCurrent GPS date and time:');
+      console.log('  Year:\t\t 20' + year);
+      console.log('  Month:\t', month);
+      console.log('  Day:\t\t', day);
+      console.log('  Timestamp:\t', hours + ':' + minutes + ':' + seconds);
+    }
+  }
+  //  When a parsed NMEA object contains a date key, call parseDate with it
+  gps.setCallback('date', function(err, parsed) {
+    if (err) {
+      console.log('Something went wrong...');
+    } else {
+      parseDate(parsed);
+    }
+  });
 });
 
 setInterval(function() {

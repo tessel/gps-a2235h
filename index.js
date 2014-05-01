@@ -3,7 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 var Packetizer = require('./lib/packetizer');
 
-var DEBUG = true;  //  Set to true for debug console logs
+var DEBUG = false;  //  Set to true for debug console logs
 
 var GPS = function (hardware, callback) {
   /*
@@ -16,15 +16,13 @@ var GPS = function (hardware, callback) {
       Callback function
   */
   var self = this;
-  //set this.types for each type
-  //type: fix, nav-info, 2waypoint, autopilot-b
-  this.hardware = hardware;
-  this.onOff = this.hardware.gpio(3);
-  this.powerState = 'off';
-  this.timeoutDuration = 10*1000;
-  this.format = 'deg-min-dec';
-  //  A collection of attributes and callback functions. See set/removeCallbacks.
-  this.callbacks = {};
+  self.hardware = hardware;
+  self.onOff = self.hardware.gpio(3);
+  self.powerState = 'off';
+  self.timeoutDuration = 10*1000;
+  self.format = 'deg-min-dec';
+  //  A collection of attributes and callback functions. See set/removeCallback.
+  self.callbacks = {};
 
   //  Turn the module on
   self.initialPowerSequence(function (err) {
@@ -235,16 +233,12 @@ GPS.prototype.beginDecoding = function (callback) {
         setImmediate(function () {
           //  Emit the packet by its type
           self.emit(datum.type, datum);
-          //  Emit coordinates if the parsed message contains them
-          if (datum.lon && datum.lat) {
-            self.emitCoordinates(datum);
-          }
+          //  Emit coordinates
+          self.emitCoordinates(datum);
           //  Ditto for altitude
-          if (datum.alt) {
-            self.emitAltitude(datum);
-          }
+          self.emitAltitude(datum);
           //  Do whatever else the user maps to specific attributes
-          self.executeCallbackss(datum);
+          self.executeCallbacks(datum);
         });
       }
     }
@@ -325,10 +319,9 @@ GPS.prototype.setCallback = function (attribute, cb, callback) {
       This function's callback function
   */
   if (this.callbacks[attribute]) {
-    console.warn('Overwriting existing directive for', attribute, 
-      'with', cb);
+    console.warn('Overwriting existing callback for', attribute, 'with', cb);
   }
-  this.callbacks[attribute] = callback;
+  this.callbacks[attribute] = cb;
   if (callback) {
     callback();
   }
@@ -366,6 +359,9 @@ GPS.prototype.executeCallbacks = function (parsed) {
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
+  if (DEBUG) {
+    console.log('executing callbacks for', Object.keys(self.callbacks));
+  }
   Object.keys(self.callbacks).forEach(function (key) {
     if (Object.keys(parsed).indexOf(key) !== -1) {  //  Is the key there?
       setImmediate(function (err) {
@@ -384,7 +380,8 @@ GPS.prototype.emitCoordinates = function (parsed) {
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (parsed.lon && parsed.lat) {
+  if (parsed.latPole !== '' && parsed.lonPole !== '' && 
+    parsed.lon !== undefined && parsed.lat !== undefined) {
     var latPole = parsed.latPole;
     var lonPole = parsed.lonPole;
     var lat = parsed.lat;
@@ -430,14 +427,14 @@ GPS.prototype.emitCoordinates = function (parsed) {
 
 GPS.prototype.emitAltitude = function (parsed) {
   /*
-  Emit the altitude in the given parsed NMEA message
+  Emit the altitude in the given parsed NMEA message. Units are always meters.
 
   Arg
     parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (parsed.alt) {
+  if (parsed.alt !== undefined) {
 
     parsed.alt = parseInt(parsed.alt);
 
