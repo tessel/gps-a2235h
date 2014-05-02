@@ -37,7 +37,8 @@ gps.on('ready', function () {
   //  Have the module act on a specific piece of data
   var parseDate = function (parsed) {
     //  Extract and print the date and time from the given NMEA message
-    if (parsed.timestamp) {
+    console.log('dfjhvvf\t', parsed)
+    if (parsed.timestamp && parsed.date) {
       var time = parsed.timestamp;
       var date = parsed.date;
   
@@ -56,14 +57,9 @@ gps.on('ready', function () {
       console.log('  Timestamp:\t', hours + ':' + minutes + ':' + seconds);
     }
   }
-  //  When a parsed NMEA object contains a date key, call parseDate with it
-  gps.setCallback('date', function (err, parsed) {
-    if (err) {
-      console.log('Something went wrong...');
-    } else {
-      parseDate(parsed);
-    }
-  });
+  //  This NMEA message type contains date/time info
+  //  Let's call parseDate with it!
+  gps.on('nav-info', parseDate);
 });
 
 process.ref();

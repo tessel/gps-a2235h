@@ -3,7 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 var Packetizer = require('./lib/packetizer');
 
-var DEBUG = false;  //  Set to true for debug console logs
+var DEBUG = true;  //  Set to true for debug console logs
 
 var GPS = function (hardware, callback) {
   /*
@@ -21,8 +21,6 @@ var GPS = function (hardware, callback) {
   self.powerState = 'off';
   self.timeoutDuration = 10*1000;
   self.format = 'deg-min-dec';
-  //  A collection of attributes and callback functions. See set/removeCallback.
-  self.callbacks = {};
 
   //  Turn the module on
   self.initialPowerSequence(function (err) {
@@ -225,16 +223,14 @@ GPS.prototype.beginDecoding = function (callback) {
       }
       //  If sucessful, emit the parsed NMEA object by its type
       if (datum) {
-        setImmediate(function () {
+        // setImmediate(function () {
           //  Emit the packet by its type
           self.emit(datum.type, datum);
           //  Emit coordinates
           self.emitCoordinates(datum);
           //  Ditto for altitude
           self.emitAltitude(datum);
-          //  Do whatever else the user maps to specific attributes
-          self.executeCallbacks(datum);
-        });
+        // });
       }
     }
   });
@@ -294,78 +290,6 @@ GPS.prototype.setCoordinateFormat = function (format) {
   }
 };
 
-GPS.prototype.setCallback = function (attribute, cb, callback) {
-  /*
-  Set a callback function to be called for NMEA messages containing valid
-  forms (!== undefined) of the given attribute. 
-
-  Notes
-  - There can only be one callback for any given attribute
-  - All messages are already emitted by their type (see beginDecoding)
-  - Not all message attributes carry the same kind of data in all message types 
-
-  Args
-    attribute
-      The attribute for which the callback will be called
-    cb
-      Callback function to call with the NMEA message; args: err, parsed (an 
-        object with the contents of the NMEA message)
-    callback
-      This function's callback function
-  */
-  if (this.callbacks[attribute]) {
-    console.warn('Overwriting existing callback for', attribute, 'with', cb);
-  }
-  this.callbacks[attribute] = cb;
-  if (callback) {
-    callback();
-  }
-};
-
-GPS.prototype.removeCallback = function (attribute, callback) {
-  /*
-  Remove the callback function to be called for NMEA messages containing valid
-  forms of the given attribute.
-  Note that there can only be one callback for any given attribute.
-
-  Args
-    attribute
-      The attribute for which the callback will be called. A string.
-    callback
-      Callback function
-  */
-  if (this.callbacks[attribute]) {
-    delete this.callbacks[attribute];
-  } else {
-    console.warn('No callback existed for', attribute);
-  }
-  if (callback) {
-    callback();
-  }
-};
-
-GPS.prototype.executeCallbacks = function (parsed) {
-  /*
-  Pass the parsed data to the appropriate callback functions, as defined in
-  this.callbacks. Called every time we get a NMEA message (see beginDecoding).
-
-  Arg
-    parsed
-      The output of nmea.parse(): an object containing the parsed NEMA message
-  */
-  var self = this;
-  if (DEBUG) {
-    console.log('executing callbacks for', Object.keys(self.callbacks));
-  }
-  Object.keys(self.callbacks).forEach(function (key) {
-    if (Object.keys(parsed).indexOf(key) !== -1) {  //  Is the key there?
-      setImmediate(function (err) {
-        self.callbacks[key](err, parsed);
-      });
-    }
-  });
-};
-
 GPS.prototype.emitCoordinates = function (parsed) {
   /*
   Format and emit the coordinates in parsed NMEA message
@@ -381,7 +305,6 @@ GPS.prototype.emitCoordinates = function (parsed) {
     var lonPole = parsed.lonPole;
     var lat = parsed.lat;
     var lon = parsed.lon;
-    var dec = lat.indexOf('.');
     var latDeg = parseFloat(lat.slice(0, dec-2));
     var latMin = parseFloat(lat.slice(dec-2, lat.length));
     dec = lon.indexOf('.');
