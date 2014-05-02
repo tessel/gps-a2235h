@@ -9,7 +9,7 @@ npm install gps-a2235h
 ##Example
 ```js
 var tessel = require('tessel');
-var hardware = tessel.port('b');
+var hardware = tessel.port['B'];
 
 var gps = require('gps-a2235h').use(hardware);
 
