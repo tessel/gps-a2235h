@@ -14,40 +14,40 @@ var hardware = tessel.port('b');
 var gps = require('gps-a2235h').use(hardware);
 
 gps.on('ready', function() {
-	
-	gps.getCoordinates(function(err, coordinates) {
-		if (err) {
-			console.log("Error retrieving coordinates", coordinates);
-		}
-	});
-	
-	gps.getAltitude(function(err, altitude) {
-		if (err) {
-			console.log("Error retrieving altitude", altitude);
-		}	
-	});
-	
-	gps.setGeofence({lat: [42.29, 'N'], lon: [71.27, 'W']}, {lat: [42.30, 'N'], lon: [71.26, 'W']}, function(err) {
-		if (err) {
-			console.log("Error setting geofence", geofence);
-		}
-	});
+  
+  gps.getCoordinates(function(err, coordinates) {
+    if (err) {
+      console.log("Error retrieving coordinates", coordinates);
+    }
+  });
+  
+  gps.getAltitude(function(err, altitude) {
+    if (err) {
+      console.log("Error retrieving altitude", altitude);
+    } 
+  });
+  
+  gps.setGeofence({lat: [42.29, 'N'], lon: [71.27, 'W']}, {lat: [42.30, 'N'], lon: [71.26, 'W']}, function(err) {
+    if (err) {
+      console.log("Error setting geofence", geofence);
+    }
+  });
 });
 
 gps.on('coordinates', function(coordinates) {
-	console.log("Module is located at", coordinates);
+  console.log("Module is located at", coordinates);
 });
 
 gps.on('altitude', function(altitude) {
-	console.log("Module is at altitude of", altitude);
+  console.log("Module is at altitude of", altitude);
 });
 
 gps.on('geofence', function(coordinates) {
-	console.log("Module has entered geofence at", coordinates);
+  console.log("Module has entered geofence at", coordinates);
 });
 
 gps.on('error', function(err) {
-	console.log("Unable to communicate with module...", err);
+  console.log("Unable to communicate with module...", err);
 });
 ```
 
