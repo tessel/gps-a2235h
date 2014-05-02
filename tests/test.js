@@ -35,7 +35,7 @@ function beginTests() {
 function getAltitudeTest(callback) {
   console.log("Testing for altitude...");
   gps.on('altitude', function(altitude){
-    console.log("Oh shit we actually got some?", altitude);
+    console.log("We actually got some?", altitude);
   });
 
   gps.getAltitude(function(err, coordinates) {
@@ -52,7 +52,7 @@ function getAltitudeTest(callback) {
 function getCoordinateTest(callback) {
   console.log("Testing for coordinates...");
   gps.on('coordinates', function(coordinates) {
-    console.log("Oh shit we actually got some?", coordinates);
+    console.log("We actually got some?", coordinates);
   });
 
   gps.getCoordinates(function(err, coordinates) {
@@ -80,18 +80,18 @@ function getNumSatellitesTest(callback) {
   });
 
   gps.once('numSatellites', function(num) {
-      if (num != undefined && gate === 1) {
-        if (eventNum === num) {
-          console.log("Num Satellites Test Passed!");
-          return callback && callback();
-        }
-        else {
-          return callback && callback("Different values returned to event and callback.");
-        }
+    if (num != undefined && gate === 1) {
+      if (eventNum === num) {
+        console.log("Num Satellites Test Passed!");
+        return callback && callback();
       }
       else {
-        return callback && callback("Num Satellites event not hit or num undefined");
+        return callback && callback("Different values returned to event and callback.");
       }
+    }
+    else {
+      return callback && callback("Num Satellites event not hit or num undefined");
+    }
   })
 }
 
@@ -119,7 +119,7 @@ function powerTest(callback) {
 }
 
 function passModule() {
-  console.log("YOU FUCKING PASSED!");
+  console.log("PASS!");
   tessel.led(2).high();
 }
 
@@ -128,8 +128,7 @@ function failModule(err) {
   tessel.led(1).high();
 }
 
-setInterval(function() {}, 20000);
-
+process.ref();
 // gps.on('connected', function() {
 // 	console.log('GPS connected. Waiting for data...');
 // 	gps.on('data', function() {
