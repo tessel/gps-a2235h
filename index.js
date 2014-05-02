@@ -3,7 +3,7 @@ var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 var Packetizer = require('./lib/packetizer');
 
-var DEBUG = true;  //  Set to true for debug console logs
+var DEBUG = false;  //  Set to true for debug console logs
 
 var GPS = function (hardware, callback) {
   /*
@@ -17,7 +17,7 @@ var GPS = function (hardware, callback) {
   */
   var self = this;
   self.hardware = hardware;
-  self.onOff = self.hardware.gpio(3);
+  self.onOff = self.hardware.digital[3];
   self.powerState = 'off';
   self.timeoutDuration = 10*1000;
   self.format = 'deg-min-dec';
@@ -191,7 +191,7 @@ GPS.prototype.power = function (state, callback) {
 
 GPS.prototype.beginDecoding = function (callback) {
   /*
-  After making contact with the A2235-H, start decoging its NMEA messages to
+  After making contact with the A2235-H, start decoding its NMEA messages to
   get information from the GPS satellites
 
   Arg
@@ -223,14 +223,12 @@ GPS.prototype.beginDecoding = function (callback) {
       }
       //  If sucessful, emit the parsed NMEA object by its type
       if (datum) {
-        // setImmediate(function () {
-          //  Emit the packet by its type
-          self.emit(datum.type, datum);
-          //  Emit coordinates
-          self.emitCoordinates(datum);
-          //  Ditto for altitude
-          self.emitAltitude(datum);
-        // });
+        //  Emit the packet by its type
+        self.emit(datum.type, datum);
+        //  Emit coordinates
+        self.emitCoordinates(datum);
+        //  Ditto for altitude
+        self.emitAltitude(datum);
       }
     }
   });
@@ -305,9 +303,9 @@ GPS.prototype.emitCoordinates = function (parsed) {
     var lonPole = parsed.lonPole;
     var lat = parsed.lat;
     var lon = parsed.lon;
+    var dec = lon.indexOf('.');
     var latDeg = parseFloat(lat.slice(0, dec-2));
     var latMin = parseFloat(lat.slice(dec-2, lat.length));
-    dec = lon.indexOf('.');
     var lonDeg = parseFloat(lon.slice(0, dec-2));
     var lonMin = parseFloat(lon.slice(dec-2, lon.length));
     var longitude;
