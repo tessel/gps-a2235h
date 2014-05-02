@@ -444,5 +444,5 @@ var connect = function (hardware) {
 	return new GPS(hardware);
 };
 
-module.exports.connect = connect;
-module.exports.GPS = GPS;
+exports.connect = connect;
+exports.GPS = GPS;
