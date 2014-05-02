@@ -445,45 +445,6 @@ GPS.prototype.emitAltitude = function (parsed) {
   }
 };
 
-// //  GPS.prototype.geofence = function (minCoordinates, maxCoordinates) {
-// // 	//  takes in coordinates, draws a rectangle from minCoordinates to maxCoordinates
-// // 	//  returns boolean 'inRange' which is true when coordinates are in the rectangle
-// // 	var buffer = this.cached;
-// // 	var inRange = false;
-// // 	if ((minCoordinates.lat.length === 2) && (maxCoordinates.lat.length === 2)) {
-// // 		if (minCoordinates.lat[1] === 'S') {
-// // 			minLat = -minCoordinates.lat[0];
-// // 		} else {minLat = minCoordinates.lat[0]}
-// // 		if (minCoordinates.lon[1] === 'W') {
-// // 			minLon = -minCoordinates.lon[0];
-// // 		} else {minLon = minCoordinates.lon[0]}
-// // 		if (maxCoordinates.lat[1] === 'S') {
-// // 			maxLat = -maxCoordinates.lat[0];
-// // 		} else {maxLat = maxCoordinates.lat[0]}
-// // 		if (maxCoordinates.lon[1] === 'W') {
-// // 			maxLon = -maxCoordinates.lon[0];
-// // 		} else {maxLon = maxCoordinates.lon[0]}
-
-// // 		//get current coordinates
-// // 		currentCoords = this.getCoordinates(this.cached);
-// // 		if (currentCoords != 'no navigation data in buffer') {
-// // 			if (currentCoords.lat[1] === 'S') {
-// // 				currentLat = -currentCoords.lat[0];
-// // 			} else {currentLat = currentCoords.lat[0]}
-// // 			if (currentCoords.lon[1] === 'W') {
-// // 				currentLon = -currentCoords.lon[0];
-// // 			} else {currentLon = currentCoords.lon[0]}
-
-// // 			//compare current coordinates with geofence
-// // 			if ((currentLat > minLat) && (currentLat < maxLat) && (currentLon > minLon) && (currentLon < maxLon)) {
-// // 				inRange = true;
-// // 			} else {inRange = false}
-// // 			var timestamp = currentCoords.timestamp;
-// // 			return {inRange: inRange, timestamp: timestamp}
-// // 		} else {return 'no position data'}
-// // 	} else {return 'please use deg-dec coordinates'}
-// // }
-
 var connect = function (hardware) {
 	return new GPS(hardware);
 };
