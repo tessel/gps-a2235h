@@ -29,15 +29,10 @@ var GPS = function (hardware, callback) {
     if (!err) {
       //  Once we are on, emit the connected event
       self.beginDecoding(function () {
-
-        setImmediate(function () {
-          self.emit('ready');
-        });
+        self.emit('ready');
       });
     } else {
-      setImmediate(function () {
-        self.emit('error', err);
-      });
+      self.emit('error', err);
     }
     if (callback) {
       callback();
