@@ -5,7 +5,7 @@ For best results, try it while outdoors.
 **********************************************************/
 
 var tessel = require('tessel');
-var gps = require('../').connect(tessel.port('d'));
+var gps = require('../').connect(tessel.port['D']);
 
 //  Initialize the GPS
 gps.on('ready', function () {
@@ -66,6 +66,4 @@ gps.on('ready', function () {
   });
 });
 
-setInterval(function () {
-  //  Stay alive
-}, 20000);
+process.ref();
