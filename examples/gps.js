@@ -1,8 +1,8 @@
-/*********************************************
+/**********************************************************
 This gps example logs a stream of data:
-number of satellites, coordinates, altitude,
+coordinates, detected satellites, timestamps, and altitude
 For best results, try it while outdoors.
-*********************************************/
+**********************************************************/
 
 var tessel = require('tessel');
 var gps = require('../').connect(tessel.port('d'));
