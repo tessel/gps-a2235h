@@ -288,7 +288,7 @@ GPS.prototype.setCoordinateFormat = function (format) {
   } else if (format != 'deg-min-sec' || format != 'deg-dec' || 
     format != 'deg-min-dec') {
     this.format = null;
-    console.warn('Invalid format. Must be \'dig-min-sec\', \'deg-dec\', or \'deg-min-dec\'');
+    console.warn('Invalid format. Must be \'deg-min-sec\', \'deg-dec\', or \'deg-min-dec\'');
   } else {
     this.format = format;
   }
