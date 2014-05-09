@@ -4,6 +4,9 @@ coordinates, detected satellites, timestamps, and altitude
 For best results, try it while outdoors.
 **********************************************************/
 
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 var tessel = require('tessel');
 var gps = require('../').use(tessel.port("A"));
 
