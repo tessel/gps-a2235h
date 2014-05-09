@@ -333,7 +333,7 @@ GPS.prototype.powerOn = function (callback) {
 };
 
 // Configure how the module reports latitude and longitude: options are 'deg-min-sec', 'deg-min-dec', and 'deg-dec'
-GPS.prototype.setCoordinateFormat = function (format) {
+GPS.prototype.setCoordinateFormat = function (format, callback) {
   /*
   Arg
     format
@@ -354,11 +354,15 @@ GPS.prototype.setCoordinateFormat = function (format) {
   } else {
     this.format = format;
   }
+  
+  if (callback) {
+    callback();
+  }
 };
 
 function use (hardware) {
 	return new GPS(hardware);
-};
+}
 
 exports.use = use;
 exports.GPS = GPS;

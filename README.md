@@ -76,55 +76,15 @@ process.ref();
 
 ##Methods
 
-Get the current coordinates of the GPS module.
-*  **`gps`.getCoordinates(`function(err, coordinates) {...}` )**
+*  **`gps`.powerOff(callback())** Turns the GPS chip off.
 
-Get the current altitude of the GPS module.
-*  **`gps`.getAltitude(`function(err, altitude) {...}` )**
+*  **`gps`.powerOn(callback())** Turns the GPS chip on.
 
-Get the current number of reachable satellites.
-*  **`gps`.getNumSatellites(`function(err) {...}` )**
-
-Get notified when the GPS is inside of specified geofence.
-
-Example geofence: `{lat: [42.29, 'N'], lon: [71.27, 'W']}, {lat: [42.30, 'N'], lon: [71.26, 'W']}`
-*  **`gps`.setGeofence(`minCoordinates`, `maxCoordinates`, `function(err) {...}` )**
-
-Turn the GPS on.
-*  **`gps`.powerOn(`function(err) {...}` )**
-
-Turn the GPS off.
-*  **`gps`.powerOff(`function(err) {...}`)**
-
-Set the format that you would like data to be returned.
-Current options are `'deg-min-sec'` or `'deg-dec'`. Default is `'deg-min-dec'`.
-*  **`gps`.setCoordinateFormat(`format`)**
+*  **`gps`.setCoordinateFormat(format, callback())** Configure how the module reports latitude and longitude: options are 'deg-min-sec', 'deg-min-dec', and 'deg-dec'.
 
 ##Events
 
-`ready` called when module has can communicate with Tessel.
-* **`gps`.on(`ready`, `function(coordinates) {...}` )**
-
-`error` called when there is a problem communicating with module.
-* **`gps`.on(`error`, `function(coordinates) {...}` )**
-
-`coordinates` called when we have finished calculating our position via satellites.
-* **`gps`.on(`coordinates`, `function(coordinates) {...}` )**
-
-`altitude` called when we have finished calculating our altitude via satellies.
-* **`gps`.on(`altitude`, `function(altitude) {...}` )**
-
-`numSatellites` called when we've discovered all available satellites. If this number is zero, you won't be able to get GPS data.
-* **`gps`.on(`numSatellites`, `function(numSatellites) {...}` )**
-
-`geofence` called when the module has entered a geofence.
-* **`gps`.on(`geofence`, `function(coordinates) {...}` )**
-
-`powerOn` called when the module turns on.
-* **`gps`.on(`powerOn`, `function() {...}` )**
-
-`powerOff` called when the module turns off.
-* **`gps`.on(`powerOff`, `function() {...}` )**
+* *event*
 
 ## License
 
