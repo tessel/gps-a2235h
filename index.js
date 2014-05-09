@@ -23,10 +23,10 @@ var GPS = function (hardware, callback) {
   self.format = 'deg-min-dec';
 
   //  Turn the module on
-  self.initialPowerSequence(function (err) {
+  self._initialPowerSequence(function (err) {
     if (!err) {
       //  Once we are on, emit the connected event
-      self.beginDecoding(function () {
+      self._beginParsing(function () {
         self.emit('ready');
       });
     } else {
@@ -40,9 +40,34 @@ var GPS = function (hardware, callback) {
 
 util.inherits(GPS, EventEmitter);
 
-GPS.prototype.initialPowerSequence = function (callback) {
+GPS.prototype._switchToNMEA9800 = function (callback) {
   /*
-  Turn on and establish contact with the A2235-H GPS module 
+  The A2235-H has been configured in hardware to use UART, but we need to send
+  it this command so that it gives us NMEA messages as opposed to SiRF binary.
+
+  Arg
+    callback
+      Callback function
+  */
+  //  Configure GPS baud rate to 9600, talk in NMEA
+  var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01,
+    0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01,
+    0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
+
+  //  Write the message
+  this.uart.write(characters);
+
+  //  Reset UART baud rate
+  this.uart = this.hardware.UART({baudrate : 9600});
+
+  if (callback) {
+    callback();
+  }
+};
+
+GPS.prototype._initialPowerSequence = function (callback) {
+  /*
+  Turn on and establish contact with the A2235-H GPS module
 
   Arg
     callback
@@ -70,7 +95,7 @@ GPS.prototype.initialPowerSequence = function (callback) {
   function noDataRecieved () {
     //  Remove the listener for any data
     self.uart.removeListener('data', waitForData);
-    //  Clear the timeout 
+    //  Clear the timeout
     clearTimeout(noReceiveTimeout);
     //  Call the callback
     if (callback) {
@@ -111,6 +136,7 @@ GPS.prototype.initialPowerSequence = function (callback) {
   }, 1000);
 };
 
+// Turns the GPS chip on
 GPS.prototype.powerOn = function (callback) {
   /*
   Try to turn the power on. Note that the A2235-H responds to a pulse, not the
@@ -121,7 +147,7 @@ GPS.prototype.powerOn = function (callback) {
       Callback function; arg: err
   */
   var self = this;
-  self.power('on', function () {
+  self._power('on', function () {
     setImmediate(function () {
       self.emit('powerOn');
     });
@@ -131,6 +157,7 @@ GPS.prototype.powerOn = function (callback) {
   });
 };
 
+// Turns the GPS chip off
 GPS.prototype.powerOff = function (callback) {
   /*
   Try to turn the power off. Note that the A2235-H responds to a pulse, not the
@@ -141,7 +168,7 @@ GPS.prototype.powerOff = function (callback) {
       Callback function; arg: err
   */
   var self = this;
-  self.power('off', function () {
+  self._power('off', function () {
     setImmediate(function () {
       self.emit('powerOff');
     });
@@ -151,11 +178,9 @@ GPS.prototype.powerOff = function (callback) {
   });
 };
 
-GPS.prototype.power = function (state, callback) {
+// Toggle the power pin of the A2235-H (attached to hardware.gpio[3]). Assumes the module knows what power state it is in.
+GPS.prototype._power = function (state, callback) {
   /*
-  Toggle the power pin of the A2235-H (attached to hardware.gpio[3]). Assumes
-  the module knows what power state it is in.
-
   Args
     state
       'on' - turn the power on
@@ -189,11 +214,9 @@ GPS.prototype.power = function (state, callback) {
   }
 };
 
-GPS.prototype.beginDecoding = function (callback) {
+// After making contact with the A2235-H, start parsing its NMEA messages to get information from the GPS satellites
+GPS.prototype._beginParsing = function (callback) {
   /*
-  After making contact with the A2235-H, start decoding its NMEA messages to
-  get information from the GPS satellites
-
   Arg
     callback
       Callback function
@@ -226,47 +249,21 @@ GPS.prototype.beginDecoding = function (callback) {
         //  Emit the packet by its type
         self.emit(datum.type, datum);
         //  Emit coordinates
-        self.emitCoordinates(datum);
+        self._emitCoordinates(datum);
         //  Ditto for altitude
-        self.emitAltitude(datum);
+        self._emitAltitude(datum);
       }
     }
   });
-
-  if (callback) { 
-    callback();
-  }
-};
-
-GPS.prototype._switchToNMEA9800 = function (callback) {
-  /*
-  The A2235-H has been configured in hardware to use UART, but we need to send 
-  it this command so that it gives us NMEA messages as opposed to SiRF binary.
-
-  Arg
-    callback
-      Callback function
-  */
-  //  Configure GPS baud rate to 9600, talk in NMEA 
-  var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01, 
-    0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01, 
-    0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
-
-  //  Write the message
-  this.uart.write(characters);
-
-  //  Reset UART baud rate
-  this.uart = this.hardware.UART({baudrate : 9600});
 
   if (callback) {
     callback();
   }
 };
 
+// Configure how the module reports latitude and longitude: options are 'deg-min-sec', 'deg-min-dec', and 'deg-dec'
 GPS.prototype.setCoordinateFormat = function (format) {
   /*
-  Configure how the module reports latitude and longitude
-
   Arg
     format
       'deg-min-sec' - Degrees + minutes + seconds
@@ -274,12 +271,12 @@ GPS.prototype.setCoordinateFormat = function (format) {
       'deg-min-dec' - Degrees + minutes and fractions thereof, as a decimal
       'utm' - Report coordinates in the  Universal Transverse Mercator
         coordinate system. Not currently supported.
-  */  
+  */
   this.format = format;
   if (format === 'utm') {
     //  if at some point we want to go through this pain: http://www.uwgb.edu/dutchs/usefuldata/utmformulas.htm
     console.warn('UTM not currently supported. Voice your outrage to @selkeymoonbeam.');
-  } else if (format != 'deg-min-sec' || format != 'deg-dec' || 
+  } else if (format != 'deg-min-sec' || format != 'deg-dec' ||
     format != 'deg-min-dec') {
     this.format = null;
     console.warn('Invalid format. Must be \'deg-min-sec\', \'deg-dec\', or \'deg-min-dec\'');
@@ -288,16 +285,15 @@ GPS.prototype.setCoordinateFormat = function (format) {
   }
 };
 
-GPS.prototype.emitCoordinates = function (parsed) {
+// Format and emit coordinates as {latitude, longitude, timestamp}
+GPS.prototype._emitCoordinates = function (parsed) {
   /*
-  Format and emit the coordinates in parsed NMEA message
-  
   Arg
     parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (parsed.latPole !== '' && parsed.lonPole !== '' && 
+  if (parsed.latPole !== '' && parsed.lonPole !== '' &&
     parsed.lon !== undefined && parsed.lat !== undefined) {
     var latPole = parsed.latPole;
     var lonPole = parsed.lonPole;
@@ -332,7 +328,7 @@ GPS.prototype.emitCoordinates = function (parsed) {
       latitude = [latDeg, latMin, latPole];
       longitude = [lonDeg, lonMin, lonPole];
     }
-    var coordinates = {lat: latitude, lon: longitude, 
+    var coordinates = {lat: latitude, lon: longitude,
       timestamp: parseFloat(parsed.timestamp)};
 
     setImmediate(function () {
@@ -341,10 +337,9 @@ GPS.prototype.emitCoordinates = function (parsed) {
   }
 };
 
-GPS.prototype.emitAltitude = function (parsed) {
+// Format and emit altitude reading as {altitude in meters, timestamp}
+GPS.prototype._emitAltitude = function (parsed) {
   /*
-  Emit the altitude in the given parsed NMEA message. Units are always meters.
-
   Arg
     parsed
       The output of nmea.parse(): an object containing the parsed NEMA message
@@ -355,15 +350,15 @@ GPS.prototype.emitAltitude = function (parsed) {
     parsed.alt = parseInt(parsed.alt);
 
     setImmediate(function () {
-      self.emit('altitude', {alt: parsed.alt, 
+      self.emit('altitude', {alt: parsed.alt,
         timestamp: parseFloat(parsed.timestamp)});
     });
   }
 };
 
-var connect = function (hardware) {
+function use (hardware) {
 	return new GPS(hardware);
 };
 
-exports.connect = connect;
+exports.use = use;
 exports.GPS = GPS;
