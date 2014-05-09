@@ -10,7 +10,7 @@ npm install gps-a2235h
 ```js
 /**********************************************************
 This gps example logs a stream of data:
-coordinates, detected satellites, timestamps, and altitude
+coordinates, detected satellites, timestamps, and altitude.
 For best results, try it while outdoors.
 **********************************************************/
 
@@ -95,6 +95,8 @@ process.ref();
 * *powerOn* Emitted when the module has been powered on.
 
 * *ready* Emitted upon first successful communication between the Tessel and the module.
+
+Also emits parsed NMEA objects by type.
 
 ## License
 

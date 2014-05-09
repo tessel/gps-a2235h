@@ -1,6 +1,6 @@
 /**********************************************************
 This gps example logs a stream of data:
-coordinates, detected satellites, timestamps, and altitude
+coordinates, detected satellites, timestamps, and altitude.
 For best results, try it while outdoors.
 **********************************************************/
 
