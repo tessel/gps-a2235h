@@ -84,8 +84,19 @@ process.ref();
 
 ##Events
 
-* *event*
+* *altitude* Emitted when altitude data is available. Emitted in the form {altitude in meters, timestamp}.
+
+* *coordinates* Emitted when coordinate data is available. Emitted in the form {latitude, longitude, timestamp}.
+
+* *error* Emitted upon error.
+
+* *powerOff* Emitted when the module has been powered off.
+
+* *powerOn* Emitted when the module has been powered on.
+
+* *ready* Emitted upon first successful communication between the Tessel and the module.
 
 ## License
 
 MIT
+APACHE

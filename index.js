@@ -70,7 +70,7 @@ GPS.prototype._beginParsing = function (callback) {
           });
         console.log();
       }
-      //  If sucessful, emit the parsed NMEA object by its type
+      // If sucessful, emit the parsed NMEA object by its type
       if (datum) {
         //  Emit the packet by its type
         self.emit(datum.type, datum);
@@ -354,7 +354,7 @@ GPS.prototype.setCoordinateFormat = function (format, callback) {
   } else {
     this.format = format;
   }
-  
+
   if (callback) {
     callback();
   }
