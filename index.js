@@ -40,28 +40,121 @@ var GPS = function (hardware, callback) {
 
 util.inherits(GPS, EventEmitter);
 
-GPS.prototype._switchToNMEA9800 = function (callback) {
+// After making contact with the A2235-H, start parsing its NMEA messages to get information from the GPS satellites
+GPS.prototype._beginParsing = function (callback) {
   /*
-  The A2235-H has been configured in hardware to use UART, but we need to send
-  it this command so that it gives us NMEA messages as opposed to SiRF binary.
-
   Arg
     callback
       Callback function
   */
-  //  Configure GPS baud rate to 9600, talk in NMEA
-  var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01,
-    0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01,
-    0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
+  var self = this;
+  //  Eventually replace this with stream packetizing... sorry Kolker
+  //  Initializer our packetizer
+  var packetizer = new Packetizer(this.uart);
+  //  Tell it to start packetizing
+  packetizer.packetize();
+  //  When we get a packet
+  packetizer.on('packet', function (packet) {
+    if (DEBUG) {
+      console.log('  Packet\t', packet);
+    }
+    //  Make sure this is a valid packet
+    if (packet[0] === '$') {
+      //  Parse it
+      var datum = nmea.parse(packet);
 
-  //  Write the message
-  this.uart.write(characters);
-
-  //  Reset UART baud rate
-  this.uart = this.hardware.UART({baudrate : 9600});
+      if (DEBUG) {  //  pretty print
+        console.log('    Got Data:');
+        Object.keys(datum).forEach(function (key) {
+          console.log('     ', key, '\n       ', datum[key]);
+          });
+        console.log();
+      }
+      //  If sucessful, emit the parsed NMEA object by its type
+      if (datum) {
+        //  Emit the packet by its type
+        self.emit(datum.type, datum);
+        //  Emit coordinates
+        self._emitCoordinates(datum);
+        //  Ditto for altitude
+        self._emitAltitude(datum);
+      }
+    }
+  });
 
   if (callback) {
     callback();
+  }
+};
+
+// Format and emit altitude reading as {altitude in meters, timestamp}
+GPS.prototype._emitAltitude = function (parsed) {
+  /*
+  Arg
+    parsed
+      The output of nmea.parse(): an object containing the parsed NEMA message
+  */
+  var self = this;
+  if (parsed.alt !== undefined) {
+
+    parsed.alt = parseInt(parsed.alt);
+
+    setImmediate(function () {
+      self.emit('altitude', {alt: parsed.alt,
+        timestamp: parseFloat(parsed.timestamp)});
+    });
+  }
+};
+
+// Format and emit coordinates as {latitude, longitude, timestamp}
+GPS.prototype._emitCoordinates = function (parsed) {
+  /*
+  Arg
+    parsed
+      The output of nmea.parse(): an object containing the parsed NEMA message
+  */
+  var self = this;
+  if (parsed.latPole !== '' && parsed.lonPole !== '' &&
+    parsed.lon !== undefined && parsed.lat !== undefined) {
+    var latPole = parsed.latPole;
+    var lonPole = parsed.lonPole;
+    var lat = parsed.lat;
+    var lon = parsed.lon;
+    var dec = lon.indexOf('.');
+    var latDeg = parseFloat(lat.slice(0, dec-2));
+    var latMin = parseFloat(lat.slice(dec-2, lat.length));
+    var lonDeg = parseFloat(lon.slice(0, dec-2));
+    var lonMin = parseFloat(lon.slice(dec-2, lon.length));
+    var longitude;
+    var latitude;
+    var latSec;
+    var lonSec;
+
+    if (self.format === 'deg-min-sec') {
+      latSec = parseFloat(latMin.toString().split('.')[1] * 0.6);
+      latMin = parseInt(latMin.toString().split('.')[0]);
+
+      lonSec = parseFloat(lonMin.toString().split('.')[1] * 0.6);
+      lonMin = parseInt(lonMin.toString().split('.')[0]);
+
+      latitude = [latDeg, latMin, latSec, latPole];
+      longitude = [lonDeg, lonMin, lonSec, lonPole];
+    } else if (self.format === 'deg-dec') {
+      lat = latDeg + (latMin / 60);
+      lon = lonDeg + (lonMin / 60);
+
+      latitude = [lat, latPole];
+      longitude = [lon, lonPole];
+    } else {
+      latitude = [latDeg, latMin, latPole];
+      longitude = [lonDeg, lonMin, lonPole];
+    }
+    var coordinates = {lat: latitude, lon: longitude,
+      timestamp: parseFloat(parsed.timestamp)};
+
+    setImmediate(function () {
+      self.emit('coordinates', coordinates);
+    });
   }
 };
 
@@ -136,48 +229,6 @@ GPS.prototype._initialPowerSequence = function (callback) {
   }, 1000);
 };
 
-// Turns the GPS chip on
-GPS.prototype.powerOn = function (callback) {
-  /*
-  Try to turn the power on. Note that the A2235-H responds to a pulse, not the
-  state of the power pin (it toggles).
-
-  Arg
-    callback
-      Callback function; arg: err
-  */
-  var self = this;
-  self._power('on', function () {
-    setImmediate(function () {
-      self.emit('powerOn');
-    });
-    if (callback) {
-      callback();
-    }
-  });
-};
-
-// Turns the GPS chip off
-GPS.prototype.powerOff = function (callback) {
-  /*
-  Try to turn the power off. Note that the A2235-H responds to a pulse, not the
-  state of the power pin (it toggles).
-
-  Arg
-    callback
-      Callback function; arg: err
-  */
-  var self = this;
-  self._power('off', function () {
-    setImmediate(function () {
-      self.emit('powerOff');
-    });
-    if (callback) {
-      callback();
-    }
-  });
-};
-
 // Toggle the power pin of the A2235-H (attached to hardware.gpio[3]). Assumes the module knows what power state it is in.
 GPS.prototype._power = function (state, callback) {
   /*
@@ -214,51 +265,71 @@ GPS.prototype._power = function (state, callback) {
   }
 };
 
-// After making contact with the A2235-H, start parsing its NMEA messages to get information from the GPS satellites
-GPS.prototype._beginParsing = function (callback) {
+GPS.prototype._switchToNMEA9800 = function (callback) {
   /*
+  The A2235-H has been configured in hardware to use UART, but we need to send
+  it this command so that it gives us NMEA messages as opposed to SiRF binary.
+
   Arg
     callback
       Callback function
   */
-  var self = this;
-  //  Eventually replace this with stream packetizing... sorry Kolker
-  //  Initializer our packetizer
-  var packetizer = new Packetizer(this.uart);
-  //  Tell it to start packetizing
-  packetizer.packetize();
-  //  When we get a packet
-  packetizer.on('packet', function (packet) {
-    if (DEBUG) {
-      console.log('  Packet\t', packet);
-    }
-    //  Make sure this is a valid packet
-    if (packet[0] === '$') {
-      //  Parse it
-      var datum = nmea.parse(packet);
+  //  Configure GPS baud rate to 9600, talk in NMEA
+  var characters = new Buffer([0xA0, 0xA2, 0x00, 0x18, 0x81, 0x02, 0x01, 0x01,
+    0x00, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01, 0x00, 0x01, 0x00, 0x01,
+    0x00, 0x01, 0x00, 0x01, 0x00, 0x01, 0x25, 0x80, 0x01, 0x3A, 0xB0, 0xB3]);
 
-      if (DEBUG) {  //  pretty print
-        console.log('    Got Data:');
-        Object.keys(datum).forEach(function (key) {
-          console.log('     ', key, '\n       ', datum[key]);
-          });
-        console.log();
-      }
-      //  If sucessful, emit the parsed NMEA object by its type
-      if (datum) {
-        //  Emit the packet by its type
-        self.emit(datum.type, datum);
-        //  Emit coordinates
-        self._emitCoordinates(datum);
-        //  Ditto for altitude
-        self._emitAltitude(datum);
-      }
-    }
-  });
+  //  Write the message
+  this.uart.write(characters);
+
+  //  Reset UART baud rate
+  this.uart = this.hardware.UART({baudrate : 9600});
 
   if (callback) {
     callback();
   }
+};
+
+// Turns the GPS chip off
+GPS.prototype.powerOff = function (callback) {
+  /*
+  Try to turn the power off. Note that the A2235-H responds to a pulse, not the
+  state of the power pin (it toggles).
+
+  Arg
+    callback
+      Callback function; arg: err
+  */
+  var self = this;
+  self._power('off', function () {
+    setImmediate(function () {
+      self.emit('powerOff');
+    });
+    if (callback) {
+      callback();
+    }
+  });
+};
+
+// Turns the GPS chip on
+GPS.prototype.powerOn = function (callback) {
+  /*
+  Try to turn the power on. Note that the A2235-H responds to a pulse, not the
+  state of the power pin (it toggles).
+
+  Arg
+    callback
+      Callback function; arg: err
+  */
+  var self = this;
+  self._power('on', function () {
+    setImmediate(function () {
+      self.emit('powerOn');
+    });
+    if (callback) {
+      callback();
+    }
+  });
 };
 
 // Configure how the module reports latitude and longitude: options are 'deg-min-sec', 'deg-min-dec', and 'deg-dec'
@@ -282,77 +353,6 @@ GPS.prototype.setCoordinateFormat = function (format) {
     console.warn('Invalid format. Must be \'deg-min-sec\', \'deg-dec\', or \'deg-min-dec\'');
   } else {
     this.format = format;
-  }
-};
-
-// Format and emit coordinates as {latitude, longitude, timestamp}
-GPS.prototype._emitCoordinates = function (parsed) {
-  /*
-  Arg
-    parsed
-      The output of nmea.parse(): an object containing the parsed NEMA message
-  */
-  var self = this;
-  if (parsed.latPole !== '' && parsed.lonPole !== '' &&
-    parsed.lon !== undefined && parsed.lat !== undefined) {
-    var latPole = parsed.latPole;
-    var lonPole = parsed.lonPole;
-    var lat = parsed.lat;
-    var lon = parsed.lon;
-    var dec = lon.indexOf('.');
-    var latDeg = parseFloat(lat.slice(0, dec-2));
-    var latMin = parseFloat(lat.slice(dec-2, lat.length));
-    var lonDeg = parseFloat(lon.slice(0, dec-2));
-    var lonMin = parseFloat(lon.slice(dec-2, lon.length));
-    var longitude;
-    var latitude;
-    var latSec;
-    var lonSec;
-
-    if (self.format === 'deg-min-sec') {
-      latSec = parseFloat(latMin.toString().split('.')[1] * 0.6);
-      latMin = parseInt(latMin.toString().split('.')[0]);
-
-      lonSec = parseFloat(lonMin.toString().split('.')[1] * 0.6);
-      lonMin = parseInt(lonMin.toString().split('.')[0]);
-
-      latitude = [latDeg, latMin, latSec, latPole];
-      longitude = [lonDeg, lonMin, lonSec, lonPole];
-    } else if (self.format === 'deg-dec') {
-      lat = latDeg + (latMin / 60);
-      lon = lonDeg + (lonMin / 60);
-
-      latitude = [lat, latPole];
-      longitude = [lon, lonPole];
-    } else {
-      latitude = [latDeg, latMin, latPole];
-      longitude = [lonDeg, lonMin, lonPole];
-    }
-    var coordinates = {lat: latitude, lon: longitude,
-      timestamp: parseFloat(parsed.timestamp)};
-
-    setImmediate(function () {
-      self.emit('coordinates', coordinates);
-    });
-  }
-};
-
-// Format and emit altitude reading as {altitude in meters, timestamp}
-GPS.prototype._emitAltitude = function (parsed) {
-  /*
-  Arg
-    parsed
-      The output of nmea.parse(): an object containing the parsed NEMA message
-  */
-  var self = this;
-  if (parsed.alt !== undefined) {
-
-    parsed.alt = parseInt(parsed.alt);
-
-    setImmediate(function () {
-      self.emit('altitude', {alt: parsed.alt,
-        timestamp: parseFloat(parsed.timestamp)});
-    });
   }
 };
 
