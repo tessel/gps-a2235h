@@ -76,25 +76,25 @@ process.ref();
 
 ##Methods
 
-*  **`gps`.powerOff(callback())** Turns the GPS chip off.
+##### * `gps.powerOff(callback())` Turns the GPS chip off.
 
-*  **`gps`.powerOn(callback())** Turns the GPS chip on.
+##### * `gps.powerOn(callback())` Turns the GPS chip on.
 
-*  **`gps`.setCoordinateFormat(format, callback())** Configure how the module reports latitude and longitude: options are 'deg-min-sec', 'deg-min-dec', and 'deg-dec'.
+##### * `gps.setCoordinateFormat(format, callback())` Configure how the module reports latitude and longitude: options are 'deg-min-sec', 'deg-min-dec', and 'deg-dec'.
 
 ##Events
 
-* *altitude* Emitted when altitude data is available. Emitted in the form {altitude in meters, timestamp}.
+##### * `gps.on('altitude', callback(altitudeObj))` Emitted when altitude data is available. Emitted in the form {altitude in meters, timestamp}.
 
-* *coordinates* Emitted when coordinate data is available. Emitted in the form {latitude, longitude, timestamp}.
+##### * `gps.on('coordinates', callback(coordinateObj))` Emitted when coordinate data is available. Emitted in the form {latitude, longitude, timestamp}.
 
-* *error* Emitted upon error.
+##### * `gps.on('error', callback(err))` Emitted upon error.
 
-* *powerOff* Emitted when the module has been powered off.
+##### * `gps.on('powerOff', callback())` Emitted when the module has been powered off.
 
-* *powerOn* Emitted when the module has been powered on.
+##### * `gps.on('powerOn', callback())` Emitted when the module has been powered on.
 
-* *ready* Emitted upon first successful communication between the Tessel and the module.
+##### * `gps.on('ready', callback())` Emitted upon first successful communication between the Tessel and the module.
 
 Also emits parsed NMEA objects by type.
 
