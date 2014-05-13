@@ -100,5 +100,4 @@ Also emits parsed NMEA objects by type.
 
 ## License
 
-MIT
-APACHE
+MIT or Apache 2.0, at your option
