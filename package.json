@@ -4,18 +4,19 @@
   "description": "Library to run Tessel's GPS module.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "./testsuite.js"
   },
   "repository": "",
   "author": "Kelsey Breseman <kelsey@technical.io>",
   "license": "MIT",
   "dependencies": {
     "nmea": "0.0.6",
-    "async" : "*",
-    "chai" : "*"
+    "async": "*",
+    "chai": "*"
   },
-  "devDependencies" : {
-    "async" : "*",
-    "chai" : "*"
+  "devDependencies": {
+    "tape": "~2.3.2",
+    "tap": "git+https://github.com/tcr/node-tap.git#3cb76e",
+    "shelljs": "~0.3.0"
   }
 }
