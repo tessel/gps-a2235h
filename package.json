@@ -6,7 +6,7 @@
   "scripts": {
     "test": "./testsuite.js"
   },
-  "repository": "",
+  "repository": "tessel/gps-a2235h",
   "author": "Kelsey Breseman <kelsey@technical.io>",
   "license": "MIT",
   "dependencies": {
