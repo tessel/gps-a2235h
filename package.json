@@ -4,7 +4,7 @@
   "description": "Library to run Tessel's GPS module.",
   "main": "index.js",
   "scripts": {
-    "test": "./testsuite.js"
+    "test": "tinytap -e 'tessel run {} ${GPS_PORT}' test/*.js"
   },
   "repository": "tessel/gps-a2235h",
   "author": "Kelsey Breseman <kelsey@technical.io>",
@@ -13,8 +13,6 @@
     "nmea": "0.0.6"
   },
   "devDependencies": {
-    "tape": "~2.3.2",
-    "tap": "git+https://github.com/tcr/node-tap.git#3cb76e",
-    "shelljs": "~0.3.0"
+    "tinytap": "~0.0.2"
   }
 }
