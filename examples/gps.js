@@ -8,7 +8,7 @@ For best results, try it while outdoors.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
 var tessel = require('tessel');
-var gps = require('../').use(tessel.port("A"));
+var gps = require('../').use(tessel.port['A']);
 
 //  Initialize the GPS
 gps.on('ready', function () {

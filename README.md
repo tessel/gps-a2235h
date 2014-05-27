@@ -15,7 +15,7 @@ For best results, try it while outdoors.
 **********************************************************/
 
 var tessel = require('tessel');
-var gps = require('gps-a2235h').use(tessel.port("A"));
+var gps = require('gps-a2235h').use(tessel.port['A']);
 
 //  Initialize the GPS
 gps.on('ready', function () {
