@@ -26,7 +26,7 @@ var GPS = function (hardware, callback) {
   */
   var self = this;
   self.hardware = hardware;
-  self.onOff = self.hardware.digital[3];
+  self.onOff = self.hardware.digital[2];
   self.powerState = 'off';
   self.timeoutDuration = 10*1000;
   self.format = 'deg-min-dec';
