@@ -37,7 +37,28 @@ gps.on('ready', function () {
     });
   });
 
+  // Have the module act on a specific piece of data
+  var parseDate = function (parsed) {
+    // Extract and print the date and time from the given NMEA message
+    if (parsed.timestamp !== '' && parsed.date !== '') {
+      var time = parsed.timestamp;
+      var date = parsed.date;
 
+      //  Parse the data
+      var day = date.slice(0, 2);
+      var month = date.slice(2, 4);
+      var year = date.slice(4);
+      var hours = time.slice(0, 2);
+      var minutes = time.slice(2, 4);
+      var seconds = time.slice(4);
+
+      console.log('\nCurrent GPS date and time:');
+      console.log('  Year:\t\t 20' + year);
+      console.log('  Month:\t', month);
+      console.log('  Day:\t\t', day);
+      console.log('  Timestamp:\t', hours + ':' + minutes + ':' + seconds);
+    }
+  };
   // This NMEA message type contains date/time info
   // Let's call parseDate with it!
   gps.on('nav-info', parseDate);
