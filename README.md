@@ -97,7 +97,26 @@ gps.on('ready', function () {
 
 ##### * `gps.on('ready', callback())` Emitted upon first successful communication between the Tessel and the module.
 
-Also emits parsed NMEA objects by type.
+###Also emits parsed NMEA objects by type:
+
+##### * `gps.on('2waypoint', callback(data))` NMEA GPBWC: Bearing and distance to waypoint.
+
+##### * `gps.on('active-satellites', callback(data))` NMEA GPGSA: GPS DOP and active satellites.
+
+##### * `gps.on('autopilot-b', callback(data))` NMEA GPAPB: Autopilot B.
+
+##### * `gps.on('fix', callback(data))` NMEA GPGGA: Global positioning system fix data.
+
+##### * `gps.on('geo-position', callback(data))` NMEA GPGLL: Geographic position (lat/long).
+
+##### * `gps.on('nav-info', callback(data))` NMEA GPRMC: Recommended minimum specific GPS/Transit data.
+
+##### * `gps.on('satellite-list-partial', callback(data))` NMEA GPGSV: GPS satellites in view.
+
+##### * `gps.on('track-info', callback(data))` NMEA GPVTG: Track made good and ground speed.
+
+##### * `gps.on('wind', callback(data))` NMEA GPMWV: Wind.
+
 
 ## License
 

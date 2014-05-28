@@ -10,35 +10,31 @@ For best results, try it while outdoors.
 var tessel = require('tessel');
 var gps = require('../').use(tessel.port['A']); // Replace '../' with 'gps-a2235h' in your own code
 
+var satsInRange = 0;
+var satsFixed = 0;
+
 // Wait until the module is connected
 gps.on('ready', function () {
   console.log('GPS module powered and ready. Waiting for satellites...');
   // Emit coordinates when we get a coordinate fix
   gps.on('coordinates', function (coords) {
-    console.log('Got some coordinates!');
-    console.log('  Lat:\t', coords.lat);
-    console.log('  Lat:\t', coords.lon);
-    console.log('  Timestamp:\t', coords.timestamp);
+    console.log('Lat:', coords.lat, '\tLon:', coords.lon, '\tTimestamp:', coords.timestamp);
   });
 
   // Emit altitude when we get an altitude fix
   gps.on('altitude', function (alt) {
-    console.log('Got an altitude of', alt.alt,
-      'meters (timestamp: ' + alt.timestamp + ')');
+    console.log('Got an altitude of', alt.alt, 'meters (timestamp: ' + alt.timestamp + ')');
   });
 
-  //  All data from the module is emitted by its type parameter. Parse one!
-  gps.on('satellite-list-partial', function (parsed) {
-    console.log('\nDetected (at least) the following satellites:');
-    //  Note that the module needs to do more than just
-    //  detect a satellite in order to lock onto it
-    parsed.satellites.forEach(function (sat) {
-      console.log(' ', sat);
-    });
+  // Emitted whenever satellites are in view
+  gps.on('satellite-list-partial', function (data) {
+    satsInRange = data.satsInView;
+    console.log(satsInRange, 'satellites in range,', satsFixed, 'fixed.');
   });
 
-
-  // This NMEA message type contains date/time info
-  // Let's call parseDate with it!
-  gps.on('nav-info', parseDate);
+  // Emitted when we have information about a fix on satellites
+  gps.on('fix', function (data) {
+    satsFixed = data.numSat;
+    console.log(satsInRange, 'satellites in range,', satsFixed, 'fixed.');
+  });
 });
