@@ -8,6 +8,9 @@ npm install gps-a2235h
 
 ##Example
 ```js
+// Any copyright is dedicated to the Public Domain.
+// http://creativecommons.org/publicdomain/zero/1.0/
+
 /**********************************************************
 This gps example logs a stream of data:
 coordinates, detected satellites, timestamps, and altitude.
@@ -15,13 +18,12 @@ For best results, try it while outdoors.
 **********************************************************/
 
 var tessel = require('tessel');
-var gps = require('gps-a2235h').use(tessel.port['A']);
+var gps = require('../').use(tessel.port['A']); // Replace '../' with 'gps-a2235h' in your own code
 
-//  Initialize the GPS
+// Wait until the module is connected
 gps.on('ready', function () {
   console.log('GPS module powered and ready. Waiting for satellites...');
-
-  //  Act on some of the built-in event emissions
+  // Emit coordinates when we get a coordinate fix
   gps.on('coordinates', function (coords) {
     console.log('Got some coordinates!');
     console.log('  Lat:\t', coords.lat);
@@ -29,6 +31,7 @@ gps.on('ready', function () {
     console.log('  Timestamp:\t', coords.timestamp);
   });
 
+  // Emit altitude when we get an altitude fix
   gps.on('altitude', function (alt) {
     console.log('Got an altitude of', alt.alt,
       'meters (timestamp: ' + alt.timestamp + ')');
@@ -44,9 +47,9 @@ gps.on('ready', function () {
     });
   });
 
-  //  Have the module act on a specific piece of data
+  // Have the module act on a specific piece of data
   var parseDate = function (parsed) {
-    //  Extract and print the date and time from the given NMEA message
+    // Extract and print the date and time from the given NMEA message
     if (parsed.timestamp !== '' && parsed.date !== '') {
       var time = parsed.timestamp;
       var date = parsed.date;
@@ -65,13 +68,11 @@ gps.on('ready', function () {
       console.log('  Day:\t\t', day);
       console.log('  Timestamp:\t', hours + ':' + minutes + ':' + seconds);
     }
-  }
-  //  This NMEA message type contains date/time info
-  //  Let's call parseDate with it!
+  };
+  // This NMEA message type contains date/time info
+  // Let's call parseDate with it!
   gps.on('nav-info', parseDate);
 });
-
-process.ref();
 ```
 
 ##Methods
