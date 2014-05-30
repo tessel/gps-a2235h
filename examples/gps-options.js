@@ -1,13 +1,3 @@
-#GPS
-Driver for the gps-a2235h Tessel GPS module ([A2235-H](http://www.mouser.com/catalog/specsheets/EVA2235-H.pdf)).
-
-##Installation
-```sh
-npm install gps-a2235h
-```
-
-##Example
-```js
 // Any copyright is dedicated to the Public Domain.
 // http://creativecommons.org/publicdomain/zero/1.0/
 
@@ -18,7 +8,7 @@ For best results, try it while outdoors.
 **********************************************************/
 
 var tessel = require('tessel');
-var gps = require('gps-a2235h').use(tessel.port['A']);
+var gps = require('../').use(tessel.port['A']); // Replace '../' with 'gps-a2235h' in your own code
 
 // Wait until the module is connected
 gps.on('ready', function () {
@@ -73,43 +63,3 @@ gps.on('ready', function () {
   // Let's call parseDate with it!
   gps.on('nav-info', parseDate);
 });
-```
-
-##Methods
-
-##### * `gps.powerOff(callback())` Turns the GPS chip off.
-
-##### * `gps.powerOn(callback())` Turns the GPS chip on.
-
-##### * `gps.setCoordinateFormat(format, callback())` Configure how the module reports latitude and longitude: options are 'deg-min-sec', 'deg-min-dec', and 'deg-dec'.
-
-##Events
-
-##### * `gps.on('altitude', callback(altitudeObj))` Emitted when altitude data is available. Emitted in the form {altitude in meters, timestamp}.
-
-##### * `gps.on('coordinates', callback(coordinateObj))` Emitted when coordinate data is available. Emitted in the form {latitude, longitude, timestamp}.
-
-##### * `gps.on('error', callback(err))` Emitted upon error.
-
-##### * `gps.on('powerOff', callback())` Emitted when the module has been powered off.
-
-##### * `gps.on('powerOn', callback())` Emitted when the module has been powered on.
-
-##### * `gps.on('ready', callback())` Emitted upon first successful communication between the Tessel and the module.
-
-###Also emits parsed NMEA objects by type:
-
-##### * `gps.on('active-satellites', callback(data))` NMEA GPGSA: GPS DOP and active satellites.
-
-##### * `gps.on('fix', callback(data))` NMEA GPGGA: Global positioning system fix data.
-
-##### * `gps.on('nav-info', callback(data))` NMEA GPRMC: Recommended minimum specific GPS/Transit data.
-
-##### * `gps.on('satellite-list-partial', callback(data))` NMEA GPGSV: GPS satellites in view.
-
-##### * `gps.on('track-info', callback(data))` NMEA GPVTG: Track made good and ground speed.
-
-
-## License
-
-MIT or Apache 2.0, at your option
