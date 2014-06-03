@@ -12,7 +12,7 @@ var EventEmitter = require('events').EventEmitter;
 var nmea = require('nmea');
 var Packetizer = require('./lib/packetizer');
 
-var DEBUG = false;  //  Set to true for debug console logs
+var DEBUG = 0;  //  Set to 1 for debug console logs, 2 for printed NMEA messages
 
 var GPS = function (hardware, callback) {
   /*
@@ -30,6 +30,8 @@ var GPS = function (hardware, callback) {
   self.powerState = 'off';
   self.timeoutDuration = 10*1000;
   self.format = 'deg-min-dec';
+  self.uart = null;
+  self.packetizer = null;
 
   //  Turn the module on
   self._initialPowerSequence(function (err) {
@@ -59,11 +61,11 @@ GPS.prototype._beginParsing = function (callback) {
   var self = this;
   //  Eventually replace this with stream packetizing... sorry Kolker
   //  Initializer our packetizer
-  var packetizer = new Packetizer(this.uart);
+  self.packetizer = new Packetizer(self.uart);
   //  Tell it to start packetizing
-  packetizer.packetize();
+  self.packetizer.packetize();
   //  When we get a packet
-  packetizer.on('packet', function (packet) {
+  self.packetizer.on('packet', function (packet) {
     if (DEBUG) {
       console.log('  Packet\t', packet);
     }
@@ -72,7 +74,7 @@ GPS.prototype._beginParsing = function (callback) {
       //  Parse it
       var datum = nmea.parse(packet);
 
-      if (DEBUG) {  //  pretty print
+      if (DEBUG >= 2) {  //  pretty print
         console.log('    Got Data:');
         Object.keys(datum).forEach(function (key) {
           console.log('     ', key, '\n       ', datum[key]);
@@ -370,7 +372,7 @@ GPS.prototype.setCoordinateFormat = function (format, callback) {
 };
 
 function use (hardware) {
-	return new GPS(hardware);
+  return new GPS(hardware);
 }
 
 exports.use = use;
