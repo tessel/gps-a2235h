@@ -8,7 +8,8 @@ For best results, try it while outdoors.
 **********************************************************/
 
 var tessel = require('tessel');
-var gps = require('../').use(tessel.port['A']); // Replace '../' with 'gps-a2235h' in your own code
+var gpsLib = require('../'); // Replace '../' with 'gps-a2235h' in your own code
+var gps = gpsLib.use(tessel.port['A']);
 
 var satsInRange = 0;
 var satsFixed = 0;
