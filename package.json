@@ -16,6 +16,6 @@
     "nmea": "0.0.6"
   },
   "devDependencies": {
-    "tinytap": "~0.0.2"
+    "tinytap": "^0.2.0"
   }
 }
