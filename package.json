@@ -12,9 +12,6 @@
   },  
   "author": "Kelsey Breseman <kelsey@technical.io>",
   "license": "MIT",
-  "dependencies": {
-    "nmea": "0.0.6"
-  },
   "devDependencies": {
     "tinytap": "^0.2.0"
   }

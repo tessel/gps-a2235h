@@ -9,7 +9,7 @@ For best results, try it while outdoors.
 
 var tessel = require('tessel');
 var gpsLib = require('../'); // Replace '../' with 'gps-a2235h' in your own code
-var gps = gpsLib.use(tessel.port['A']);
+var gps = gpsLib.use(tessel.port['C']);
 
 var satsInRange = 0;
 var satsFixed = 0;
@@ -28,14 +28,22 @@ gps.on('ready', function () {
   });
 
   // Emitted whenever satellites are in view
-  gps.on('satellite-list-partial', function (data) {
-    satsInRange = data.satsInView;
-    console.log(satsInRange, 'satellites in range,', satsFixed, 'fixed.');
-  });
+  // gps.on('satellite-list-partial', function (data) {
+  //   satsInRange = data.satsInView;
+  //   console.log(satsInRange, 'satellites in range,', satsFixed, 'fixed.');
+  // });
 
   // Emitted when we have information about a fix on satellites
   gps.on('fix', function (data) {
-    satsFixed = data.numSat;
-    console.log(satsInRange, 'satellites in range,', satsFixed, 'fixed.');
+    console.log(data.numSat, 'fixed.');
   });
+
+  gps.on('dropped', function(){
+    // we dropped the gps signal
+    console.log("gps signal dropped");
+  });
+});
+
+gps.on('error', function(err){
+  console.log("got this error", err);
 });
