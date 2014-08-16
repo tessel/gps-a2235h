@@ -106,7 +106,7 @@ GPS.prototype._emitAltitude = function (parsed) {
       The output of nmea.parse(): an object containing the parsed NEMA message
   */
   var self = this;
-  if (parsed.alt !== undefined) {
+  if (!isNaN(parsed.alt) && parsed.alt !== undefined) {
 
     parsed.alt = parseInt(parsed.alt);
 
