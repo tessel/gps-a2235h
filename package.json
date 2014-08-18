@@ -12,6 +12,7 @@
   },  
   "author": "Kelsey Breseman <kelsey@technical.io>",
   "license": "MIT",
+  "dependencies": {},
   "devDependencies": {
     "tinytap": "^0.2.0"
   }
