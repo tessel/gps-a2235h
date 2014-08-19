@@ -3,6 +3,8 @@ Driver for the gps-a2235h Tessel GPS module. The hardware documentation for this
 
 If you run into any issues you can ask for support on the [GPS Module Forums](http://forums.tessel.io/category/gps).
 
+The GPS module can currently only be run from Port C using software UART. Port C is the most isolated from RF noise and is best for locking onto GPS signals. 
+
 ###Installation
 ```sh
 npm install gps-a2235h
