@@ -9,7 +9,7 @@ For best results, try it while outdoors.
 
 var tessel = require('tessel');
 
-var port = process.argv[2] || 'A';
+var port = process.argv[2] || 'C';
 var gps = require('../').use(tessel.port[port]);
 
 console.log('# testing on port', port);
