@@ -118,12 +118,12 @@ GPS.prototype._checkConnection = function(){
         numSat: hw.gps_get_satellites()
       });
     } else {
-      self.hasFix = false;
       if (self.hasFix) {
         // we had a fix but we dropped it
         // reduce usage on the mcu so we emit less noise
         self.emit('dropped');
       }
+      self.hasFix = false;
     }
 
     self._checkConnection();
