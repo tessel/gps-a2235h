@@ -93,6 +93,35 @@ var GPS = function (hardware, callback) {
     }
   }, 1000);
 
+  // poll every 2 seconds by default, can bump this up but it'll consume more cpu
+  var pollTime = 2000;
+  self.getPollTime = function () {
+    return pollTime;
+  };
+  self.setPollTime = function (time) {
+    time = parseInt(time, 10);
+    if (isNaN(time)) {
+        time = 2000;
+        if (exports.debug) {
+            console.log('time must be an integer between 2000 and 60000');
+        }
+    }
+    if (time < 2000) {
+        // No less than 2 seconds
+        if (exports.debug) {
+          console.log("time must be at least 2000ms (2s)");
+        }
+        time = 2000;
+    } else if (time > 60000) {
+        // No more than 60 seconds
+        if (exports.debug) {
+          console.log("time must not be greater than 60000ms (60s)");
+        }
+        time = 60000;
+    }
+    pollTime = time;
+    return self;
+  };
 };
 
 util.inherits(GPS, EventEmitter);
@@ -127,7 +156,7 @@ GPS.prototype._checkConnection = function(){
     }
 
     self._checkConnection();
-  }, 2000); // poll every 2 seconds, can bump this up but it'll consume more cpu
+  }, self.getPollTime());
 }
 
 // Toggle the power pin of the A2235-H (attached to hardware.gpio[3]). Assumes the module knows what power state it is in.
