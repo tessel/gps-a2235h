@@ -1,6 +1,6 @@
 {
   "name": "gps-a2235h",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Library to run Tessel's GPS module.",
   "main": "index.js",
   "scripts": {
