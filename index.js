@@ -137,11 +137,13 @@ GPS.prototype._checkConnection = function(){
         lat: hw.gps_get_latitude(),
         lon: hw.gps_get_longitude(),
         speed: hw.gps_get_speed(),
-        timestamp: hw.gps_get_time()
+        timestamp: hw.gps_get_time(),
+        datestamp: hw.gps_get_date()
       });
       self.emit('altitude', {
         alt: hw.gps_get_altitude(),
-        timestamp: hw.gps_get_time()
+        timestamp: hw.gps_get_time(),
+        datestamp: hw.gps_get_date()
       });
       self.emit('fix', {
         numSat: hw.gps_get_satellites()
