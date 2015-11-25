@@ -22,9 +22,16 @@ var tessel = require('tessel');
 var gpsLib = require('gps-a2235h');
 gpsLib.debug = 0; // switch this to 1 for debug logs, 2 for printing out raw nmea messages
 
-// GPS uses software UART, which is only available on Port C
+// GPS uses software UART, which is only available on Port C on Tessel 1
 // we use Port C because it is port most isolated from RF noise
-var gps = gpsLib.use(tessel.port['C']); 
+// Port C doesn't exist on Tessel 2 so use Port A
+var portToUse = 'C';
+
+if (!tessel.port[portToUse]) {
+  portToUse = 'A';
+}
+
+var gps = gpsLib.use(tessel.port[portToUse]);
 
 // Wait until the module is connected
 gps.on('ready', function () {
@@ -56,6 +63,13 @@ gps.on('error', function(err){
 ```
 
 ###Methods
+&#x20;<a href="#api-gps-setCoordinateFormat-options-callback-Sets-coordinate-output-notation" name="api-gps-setCoordinateFormat-options-callback-Sets-coordinate-output-notation">#</a> gps<b>.setCoordinateFormat</b>(options, callback() )
+ Sets the output format for coordinates. Valid options:
+ ```
+ options.format: 'deg-min-sec', 'deg-dec', deg-min-dec, 'utm'
+ options.zone: INTEGER (used for UTM calculations)
+ ```
+
 &#x20;<a href="#api-gps-powerOff-callback-Turns-the-GPS-chip-off" name="api-gps-powerOff-callback-Turns-the-GPS-chip-off">#</a> gps<b>.powerOff</b>( callback() )  
  Turns the GPS chip off.  
 
