@@ -56,6 +56,13 @@ gps.on('error', function(err){
 ```
 
 ###Methods
+&#x20;<a href="#api-gps-setCoordinateFormat-options-callback-Sets-coordinate-output-notation" name="api-gps-setCoordinateFormat-options-callback-Sets-coordinate-output-notation">#</a> gps<b>.setCoordinateFormat</b>(options, callback() )
+ Sets the output format for coordinates. This is only available on Tessel 2. Valid options:
+ ```
+ options.format: 'deg-min-sec', 'deg-dec', deg-min-dec, 'utm'
+ options.zone: INTEGER (used for UTM calculations)
+ ```
+ 
 &#x20;<a href="#api-gps-powerOff-callback-Turns-the-GPS-chip-off" name="api-gps-powerOff-callback-Turns-the-GPS-chip-off">#</a> gps<b>.powerOff</b>( callback() )  
  Turns the GPS chip off.  
 

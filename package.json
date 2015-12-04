@@ -1,6 +1,6 @@
 {
   "name": "gps-a2235h",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Library to run Tessel's GPS module.",
   "main": "index.js",
   "scripts": {
@@ -13,6 +13,7 @@
   "author": "Kelsey Breseman <kelsey@technical.io>",
   "license": "MIT",
   "dependencies": {
+    "coordinator": "^0.4.7",
     "nmea": "0.0.9"
   },
   "devDependencies": {
