@@ -9,10 +9,12 @@
   "repository": {
     "type": "git",
     "url": "git@github.com:tessel/gps-a2235h.git"
-  },  
+  },
   "author": "Kelsey Breseman <kelsey@technical.io>",
   "license": "MIT",
-  "dependencies": {},
+  "dependencies": {
+    "nmea": "0.0.9"
+  },
   "devDependencies": {
     "tinytap": "^0.2.0"
   }
