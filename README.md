@@ -3,7 +3,7 @@ Driver for the gps-a2235h Tessel GPS module. The hardware documentation for this
 
 If you run into any issues you can ask for support on the [GPS Module Forums](http://forums.tessel.io/category/gps).
 
-The GPS module can currently only be run from Port C using software UART. Port C is the most isolated from RF noise and is best for locking onto GPS signals. 
+The GPS module can currently only be run from Port C using software UART. Port C is the most isolated from RF noise and is best for locking onto GPS signals.
 
 ###Installation
 ```sh
@@ -20,11 +20,17 @@ For best results, try it while outdoors.
 
 var tessel = require('tessel');
 var gpsLib = require('gps-a2235h');
-gpsLib.debug = 0; // switch this to 1 for debug logs, 2 for printing out raw nmea messages
 
-// GPS uses software UART, which is only available on Port C
-// we use Port C because it is port most isolated from RF noise
-var gps = gpsLib.use(tessel.port['C']); 
+// GPS uses software UART, which is only available on Port C on Tessel 1
+// we use Port C because it is most isolated from RF noise
+// Port C doesn't exist on Tessel 2 so use Port A
+var portToUse = 'C';
+
+if (!tessel.port[portToUse]) {
+  portToUse = 'A';
+}
+
+var gps = gpsLib.use(tessel.port[portToUse]);
 
 // Wait until the module is connected
 gps.on('ready', function () {
@@ -53,6 +59,7 @@ gps.on('ready', function () {
 gps.on('error', function(err){
   console.log("got this error", err);
 });
+
 ```
 
 ###Methods
@@ -62,7 +69,7 @@ gps.on('error', function(err){
  options.format: 'deg-min-sec', 'deg-dec', deg-min-dec, 'utm'
  options.zone: INTEGER (used for UTM calculations)
  ```
- 
+
 &#x20;<a href="#api-gps-powerOff-callback-Turns-the-GPS-chip-off" name="api-gps-powerOff-callback-Turns-the-GPS-chip-off">#</a> gps<b>.powerOff</b>( callback() )  
  Turns the GPS chip off.  
 

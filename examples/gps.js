@@ -9,10 +9,9 @@ For best results, try it while outdoors.
 
 var tessel = require('tessel');
 var gpsLib = require('../'); // Replace '../' with 'gps-a2235h' in your own code
-gpsLib.debug = 0; // switch this to 1 for debug logs, 2 for printing out raw nmea messages
 
 // GPS uses software UART, which is only available on Port C on Tessel 1
-// we use Port C because it is port most isolated from RF noise
+// we use Port C because it is most isolated from RF noise
 // Port C doesn't exist on Tessel 2 so use Port A
 var portToUse = 'C';
 
