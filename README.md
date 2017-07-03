@@ -16,7 +16,7 @@ npm install gps-a2235h
 ```
 
 ### Example
-```js
+```javascript
 /**********************************************************
 This gps example logs a stream of data:
 coordinates, detected satellites, timestamps, and altitude.
