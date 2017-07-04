@@ -85,22 +85,22 @@ gps.on('error', function(err){
 
 ### Events
 
-+&#x20;<a href="#api-gps-on-altitude-callback-altitudeObj-Emitted-when-altitude-data-is-available-Emitted-in-the-form-altitude-in-meters-timestamp" name="api-gps-on-altitude-callback-altitudeObj-Emitted-when-altitude-data-is-available-Emitted-in-the-form-altitude-in-meters-timestamp">#</a> gps<b>.on</b>( 'altitude', callback(altitudeObj) )  
+&#x20;<a href="#api-gps-on-altitude-callback-altitudeObj-Emitted-when-altitude-data-is-available-Emitted-in-the-form-altitude-in-meters-timestamp" name="api-gps-on-altitude-callback-altitudeObj-Emitted-when-altitude-data-is-available-Emitted-in-the-form-altitude-in-meters-timestamp">#</a> gps<b>.on</b>( 'altitude', callback(altitudeObj) )  
  Emitted when altitude data is available. Emitted in the form {altitude in meters, timestamp}.  
 
-+&#x20;<a href="#api-gps-on-coordinates-callback-coordinateObj-Emitted-when-coordinate-data-is-available-Emitted-in-the-form-latitude-longitude-timestamp" name="api-gps-on-coordinates-callback-coordinateObj-Emitted-when-coordinate-data-is-available-Emitted-in-the-form-latitude-longitude-timestamp">#</a> gps<b>.on</b>( 'coordinates', callback(coordinateObj) )  
+&#x20;<a href="#api-gps-on-coordinates-callback-coordinateObj-Emitted-when-coordinate-data-is-available-Emitted-in-the-form-latitude-longitude-timestamp" name="api-gps-on-coordinates-callback-coordinateObj-Emitted-when-coordinate-data-is-available-Emitted-in-the-form-latitude-longitude-timestamp">#</a> gps<b>.on</b>( 'coordinates', callback(coordinateObj) )  
  Emitted when coordinate data is available. Emitted in the form {latitude, longitude, timestamp}.  
 
-+&#x20;<a href="#api-gps-on-error-callback-err-Emitted-upon-error" name="api-gps-on-error-callback-err-Emitted-upon-error">#</a> gps<b>.on</b>( 'error', callback(err) )  
+&#x20;<a href="#api-gps-on-error-callback-err-Emitted-upon-error" name="api-gps-on-error-callback-err-Emitted-upon-error">#</a> gps<b>.on</b>( 'error', callback(err) )  
  Emitted upon error.  
 
-+&#x20;<a href="#api-gps-on-power-off-callback-Emitted-when-the-module-has-been-powered-off" name="api-gps-on-power-off-callback-Emitted-when-the-module-has-been-powered-off">#</a> gps<b>.on</b>( 'power-off', callback() )  
+&#x20;<a href="#api-gps-on-power-off-callback-Emitted-when-the-module-has-been-powered-off" name="api-gps-on-power-off-callback-Emitted-when-the-module-has-been-powered-off">#</a> gps<b>.on</b>( 'power-off', callback() )  
  Emitted when the module has been powered off.  
 
-+&#x20;<a href="#api-gps-on-power-on-callback-Emitted-when-the-module-has-been-powered-on" name="api-gps-on-power-on-callback-Emitted-when-the-module-has-been-powered-on">#</a> gps<b>.on</b>( 'power-on', callback() )  
+&#x20;<a href="#api-gps-on-power-on-callback-Emitted-when-the-module-has-been-powered-on" name="api-gps-on-power-on-callback-Emitted-when-the-module-has-been-powered-on">#</a> gps<b>.on</b>( 'power-on', callback() )  
  Emitted when the module has been powered on.  
 
-+&#x20;<a href="#api-gps-on-ready-callback-Emitted-upon-first-successful-communication-between-the-Tessel-and-the-module" name="api-gps-on-ready-callback-Emitted-upon-first-successful-communication-between-the-Tessel-and-the-module">#</a> gps<b>.on</b>( 'ready', callback() )  
+&#x20;<a href="#api-gps-on-ready-callback-Emitted-upon-first-successful-communication-between-the-Tessel-and-the-module" name="api-gps-on-ready-callback-Emitted-upon-first-successful-communication-between-the-Tessel-and-the-module">#</a> gps<b>.on</b>( 'ready', callback() )  
  Emitted upon first successful communication between the Tessel and the module.  
 
 
